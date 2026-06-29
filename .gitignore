@@ -1,0 +1,58 @@
+# ─── .NET / ASP.NET Core ───────────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+*.DS_Store
+*.log
+TestResults/
+*.nupkg
+*.snupkg
+.env
+*.pfx
+*.p12
+
+# EF Core
+*.sqlite
+*.db
+
+# ─── Node.js / Next.js ─────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+.cache/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ─── Docker ────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── IDE ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.docstates
+
+# ─── OS ────────────────────────────────────────────────────────────────────
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ─── Ignore Files ────────────────────────────────────────────────────────────
+PLANNING.md
+README2.md
