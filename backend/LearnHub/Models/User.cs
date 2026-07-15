@@ -13,8 +13,8 @@ namespace LearnHub.Models
             public long Id { get; set;}
             public string Username { get; set;}
             public string Email { get; set;}
-            public string password { get; set;}
-            public string googleId { get; set;}
+            public string? PasswordHash { get; set;}
+            public string? GoogleId { get; set;}
             public Role Role { get; set;}
             public DateTime CreatedAt { get; set;}
 

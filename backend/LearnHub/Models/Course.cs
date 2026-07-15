@@ -6,8 +6,8 @@ namespace LearnHub.Models
         public long InstructorId { get; set; }
         public string Title { get; set;}
         public string Description { get; set;}
-        public string ThumbnailUrl { get; set;}
-        public string Category { get; set;}
+        public string? ThumbnailUrl { get; set;}
+        public string? Category { get; set;}
         public bool IsPublished { get; set;}
         public DateTime CreatedAt { get; set;}
 

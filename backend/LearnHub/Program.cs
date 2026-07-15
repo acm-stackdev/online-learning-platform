@@ -1,6 +1,11 @@
+using System.Text;
 using CloudinaryDotNet;
-using Microsoft.EntityFrameworkCore;
 using LearnHub.Data;
+using LearnHub.Helpers;
+using LearnHub.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 
@@ -28,6 +33,36 @@ try{
         builder.Configuration["Cloudinary:ApiSecret"]
     )));
 
+    builder.Services.AddSingleton<JwtHelper>();
+    builder.Services.AddScoped<AuthService>();
+    builder.Services.AddScoped<CourseService>();
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                ValidAudience = builder.Configuration["Jwt:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]!)),
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    if (context.Request.Cookies.TryGetValue("access_token", out var token))
+                        context.Token = token;
+                    return Task.CompletedTask;
+                }
+            };
+        });
+
+    builder.Services.AddAuthorization();
 
     builder.Services.AddCors(options =>
     {
@@ -55,6 +90,7 @@ if (app.Environment.IsDevelopment())
 app.UseSerilogRequestLogging();
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

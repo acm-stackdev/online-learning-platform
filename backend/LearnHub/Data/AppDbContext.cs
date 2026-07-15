@@ -15,13 +15,26 @@ namespace LearnHub.Data
     public DbSet<Lesson> Lessons { get; set; }
     public DbSet<LessonProgress> LessonProgress { get; set; }
     public DbSet<Certificate> Certificates { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder){
         //for unique email
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
-            
+
+        //for unique google account linkage (Postgres allows multiple NULLs in a unique index)
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.GoogleId)
+            .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(rt => rt.User)
+            .WithMany()
+            .HasForeignKey(rt => rt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+
         //for unique duplicate enrollments
         modelBuilder.Entity<Enrollment>()
             .HasIndex(e => new { e.StudentId, e.CourseId })
