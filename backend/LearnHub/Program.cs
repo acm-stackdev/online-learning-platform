@@ -1,3 +1,4 @@
+using CloudinaryDotNet;
 using Microsoft.EntityFrameworkCore;
 using LearnHub.Data;
 using Serilog;
@@ -9,6 +10,8 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 try{
+    DotNetEnv.Env.Load();
+
     var builder = WebApplication.CreateBuilder(args);
 
     builder.Host.UseSerilog();
@@ -16,7 +19,16 @@ try{
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
-    
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+    builder.Services.AddSingleton(new Cloudinary(new Account(
+        builder.Configuration["Cloudinary:CloudName"],
+        builder.Configuration["Cloudinary:ApiKey"],
+        builder.Configuration["Cloudinary:ApiSecret"]
+    )));
+
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
