@@ -10,24 +10,28 @@ namespace LearnHub.Services
 {
     public record AuthResult(User User, string AccessToken, string RefreshToken);
     public record TokenPair(string AccessToken, string RefreshToken);
+    public record GoogleLoginResult(User User, string? AccessToken, string? RefreshToken, bool VerificationRequired);
 
     public class AuthService
     {
         private readonly AppDbContext _db;
         private readonly JwtHelper _jwtHelper;
+        private readonly IEmailService _emailService;
         private readonly PasswordHasher<User> _passwordHasher;
         private readonly IConfiguration _config;
         private const int RefreshTokenDays = 7;
+        private const int VerificationTokenHours = 24;
 
-        public AuthService(AppDbContext db, JwtHelper jwtHelper, IConfiguration config)
+        public AuthService(AppDbContext db, JwtHelper jwtHelper, IConfiguration config, IEmailService emailService)
         {
             _db = db;
             _jwtHelper = jwtHelper;
             _config = config;
+            _emailService = emailService;
             _passwordHasher = new PasswordHasher<User>();
         }
 
-        public async Task<AuthResult> RegisterAsync(RegisterDto dto)
+        public async Task<User> RegisterAsync(RegisterDto dto)
         {
             var exists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
             if (exists)
@@ -38,6 +42,7 @@ namespace LearnHub.Services
                 Username = dto.Username,
                 Email = dto.Email,
                 Role = Role.Student,
+                IsEmailVerified = false,
                 CreatedAt = DateTime.UtcNow,
             };
             user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
@@ -45,7 +50,9 @@ namespace LearnHub.Services
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            return await IssueTokensAsync(user);
+            await IssueVerificationTokenAsync(user);
+
+            return user;
         }
 
         public async Task<AuthResult> LoginAsync(LoginDto dto)
@@ -61,10 +68,13 @@ namespace LearnHub.Services
             if (result == PasswordVerificationResult.Failed)
                 throw new ApiException("Invalid email or password.", 401);
 
+            if (!user.IsEmailVerified)
+                throw new ApiException("Please verify your email before logging in.", 403);
+
             return await IssueTokensAsync(user);
         }
 
-        public async Task<AuthResult> GoogleLoginAsync(GoogleLoginDto dto)
+        public async Task<GoogleLoginResult> GoogleLoginAsync(GoogleLoginDto dto)
         {
             GoogleJsonWebSignature.Payload payload;
             try
@@ -82,6 +92,7 @@ namespace LearnHub.Services
             var user = await _db.Users.FirstOrDefaultAsync(u => u.GoogleId == payload.Subject)
                        ?? await _db.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
 
+            var isNewUser = false;
             if (user is null)
             {
                 user = new User
@@ -90,9 +101,11 @@ namespace LearnHub.Services
                     Email = payload.Email,
                     GoogleId = payload.Subject,
                     Role = Role.Student,
+                    IsEmailVerified = false,
                     CreatedAt = DateTime.UtcNow,
                 };
                 _db.Users.Add(user);
+                isNewUser = true;
             }
             else if (user.GoogleId is null)
             {
@@ -101,7 +114,17 @@ namespace LearnHub.Services
 
             await _db.SaveChangesAsync();
 
-            return await IssueTokensAsync(user);
+            if (isNewUser)
+            {
+                await IssueVerificationTokenAsync(user);
+                return new GoogleLoginResult(user, null, null, true);
+            }
+
+            if (!user.IsEmailVerified)
+                throw new ApiException("Please verify your email before logging in.", 403);
+
+            var result = await IssueTokensAsync(user);
+            return new GoogleLoginResult(user, result.AccessToken, result.RefreshToken, false);
         }
 
         public async Task<TokenPair> RefreshAsync(string rawRefreshToken)
@@ -129,6 +152,40 @@ namespace LearnHub.Services
                 stored.RevokedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
             }
+        }
+
+        public async Task VerifyEmailAsync(string rawToken)
+        {
+            var hash = _jwtHelper.HashToken(rawToken);
+            var stored = await _db.VerificationTokens
+                .Include(vt => vt.User)
+                .FirstOrDefaultAsync(vt => vt.TokenHash == hash && vt.Purpose == TokenPurpose.EmailVerification);
+
+            if (stored is null || stored.UsedAt is not null || stored.ExpiresAt < DateTime.UtcNow)
+                throw new ApiException("Invalid or expired verification link.", 400);
+
+            stored.UsedAt = DateTime.UtcNow;
+            stored.User.IsEmailVerified = true;
+            await _db.SaveChangesAsync();
+        }
+
+        private async Task IssueVerificationTokenAsync(User user)
+        {
+            var rawToken = _jwtHelper.GenerateRefreshToken();
+
+            _db.VerificationTokens.Add(new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = _jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.EmailVerification,
+                ExpiresAt = DateTime.UtcNow.AddHours(VerificationTokenHours),
+                CreatedAt = DateTime.UtcNow,
+            });
+            await _db.SaveChangesAsync();
+
+            var baseUrl = _config["Frontend:BaseUrl"];
+            var link = $"{baseUrl}/verify-email?token={Uri.EscapeDataString(rawToken)}";
+            await _emailService.SendVerificationEmailAsync(user.Email, user.Username, link);
         }
 
         private async Task<AuthResult> IssueTokensAsync(User user)

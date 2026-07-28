@@ -16,6 +16,7 @@ namespace LearnHub.Models
             public string? PasswordHash { get; set;}
             public string? GoogleId { get; set;}
             public Role Role { get; set;}
+            public bool IsEmailVerified { get; set; } = false;
             public DateTime CreatedAt { get; set;}
 
             public ICollection<Course> EnrolledCourses {get; set;} = new List<Course>();

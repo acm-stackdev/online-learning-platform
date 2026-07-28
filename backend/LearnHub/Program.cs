@@ -34,6 +34,7 @@ try{
     )));
 
     builder.Services.AddSingleton<JwtHelper>();
+    builder.Services.AddSingleton<IEmailService, EmailService>();
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<CourseService>();
 

@@ -30,9 +30,8 @@ namespace LearnHub.Controllers
         {
             try
             {
-                var result = await _authService.RegisterAsync(dto);
-                SetAuthCookies(result.AccessToken, result.RefreshToken);
-                return Ok(ToUserResponse(result.User));
+                await _authService.RegisterAsync(dto);
+                return Ok(new RegisterResponseDto { Message = "Registered. Please check your email to verify your account." });
             }
             catch (ApiException ex)
             {
@@ -61,8 +60,25 @@ namespace LearnHub.Controllers
             try
             {
                 var result = await _authService.GoogleLoginAsync(dto);
-                SetAuthCookies(result.AccessToken, result.RefreshToken);
+                if (result.VerificationRequired)
+                    return Ok(new RegisterResponseDto { Message = "Registered. Please check your email to verify your account." });
+
+                SetAuthCookies(result.AccessToken!, result.RefreshToken!);
                 return Ok(ToUserResponse(result.User));
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto)
+        {
+            try
+            {
+                await _authService.VerifyEmailAsync(dto.Token);
+                return Ok(new { message = "Email verified. You can now log in." });
             }
             catch (ApiException ex)
             {

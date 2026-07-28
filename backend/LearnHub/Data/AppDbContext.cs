@@ -16,6 +16,7 @@ namespace LearnHub.Data
     public DbSet<LessonProgress> LessonProgress { get; set; }
     public DbSet<Certificate> Certificates { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<VerificationToken> VerificationTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder){
         //for unique email
@@ -33,6 +34,16 @@ namespace LearnHub.Data
             .WithMany()
             .HasForeignKey(rt => rt.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<VerificationToken>()
+            .HasOne(vt => vt.User)
+            .WithMany()
+            .HasForeignKey(vt => vt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<VerificationToken>()
+            .Property(vt => vt.Purpose)
+            .HasConversion<string>();
 
 
         //for unique duplicate enrollments
