@@ -113,7 +113,7 @@ namespace LearnHub.Controllers
                 await _authService.LogoutAsync(rawRefreshToken);
 
             Response.Cookies.Delete(AccessCookie);
-            Response.Cookies.Delete(RefreshCookie, new CookieOptions { Path = "/api/auth/refresh" });
+            Response.Cookies.Delete(RefreshCookie, new CookieOptions { Path = "/api/auth" });
             return Ok();
         }
 
