@@ -104,6 +104,7 @@ namespace LearnHub.Services
                                 Id = l.Id,
                                 Title = l.Title,
                                 ContentType = l.ContentType,
+                                ContentUrl = l.ContentUrl,
                                 Duration = l.Duration,
                                 Order = l.Order,
                             }).ToList(),

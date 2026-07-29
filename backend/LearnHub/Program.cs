@@ -35,8 +35,16 @@ try{
 
     builder.Services.AddSingleton<JwtHelper>();
     builder.Services.AddSingleton<IEmailService, EmailService>();
+    builder.Services.AddScoped<IFileUploadService, CloudinaryUploadService>();
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<CourseService>();
+    builder.Services.AddScoped<SectionService>();
+    builder.Services.AddScoped<LessonService>();
+
+    builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
+    {
+        options.Limits.MaxRequestBodySize = 500L * 1024 * 1024; // allow large video uploads
+    });
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
