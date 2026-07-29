@@ -61,6 +61,10 @@ namespace LearnHub.Data
             .Property(u => u.Role)
             .HasConversion<string>();
 
+        modelBuilder.Entity<Course>()
+            .Property(c => c.Status)
+            .HasConversion<string>();
+
         modelBuilder.Entity<Lesson>()
             .Property(l => l.ContentType)
             .HasConversion<string>();

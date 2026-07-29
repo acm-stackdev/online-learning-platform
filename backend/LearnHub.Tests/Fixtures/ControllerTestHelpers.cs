@@ -20,12 +20,13 @@ namespace LearnHub.Tests.Fixtures
             return new ControllerContext { HttpContext = httpContext };
         }
 
-        public static ClaimsPrincipal BuildUserPrincipal(long userId)
+        public static ClaimsPrincipal BuildUserPrincipal(long userId, string? role = null)
         {
-            var identity = new ClaimsIdentity(new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString())
-            }, authenticationType: "TestAuth");
+            var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+            if (role is not null)
+                claims.Add(new Claim(ClaimTypes.Role, role));
+
+            var identity = new ClaimsIdentity(claims, authenticationType: "TestAuth");
 
             return new ClaimsPrincipal(identity);
         }

@@ -1,4 +1,5 @@
 using LearnHub.Data;
+using LearnHub.Models;
 using LearnHub.Models.DTOs.Common;
 using LearnHub.Models.DTOs.Course;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ namespace LearnHub.Services
                 ThumbnailUrl = dto.ThumbnailUrl,
                 Category = dto.Category,
                 InstructorId = instructorId,
-                IsPublished = false,
+                Status = CourseStatus.Draft,
                 CreatedAt = DateTime.UtcNow,
             };
 
@@ -38,7 +39,7 @@ namespace LearnHub.Services
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize, 1, 50);
 
-            var query = _db.Courses.Include(c => c.Instructor).Where(c => c.IsPublished);
+            var query = _db.Courses.Include(c => c.Instructor).Where(c => c.Status == CourseStatus.Published);
 
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(c => c.Title.Contains(search) || c.Description.Contains(search));
@@ -63,7 +64,7 @@ namespace LearnHub.Services
             };
         }
 
-        public async Task<CourseDetailDto> GetDetailAsync(long id, long? requestingUserId)
+        public async Task<CourseDetailDto> GetDetailAsync(long id, long? requestingUserId, bool isAdmin)
         {
             var course = await _db.Courses
                 .Include(c => c.Instructor)
@@ -74,7 +75,8 @@ namespace LearnHub.Services
             if (course is null)
                 throw new ApiException("Course not found.", 404);
 
-            if (!course.IsPublished && course.InstructorId != requestingUserId)
+            var isOwner = requestingUserId.HasValue && course.InstructorId == requestingUserId.Value;
+            if (course.Status != CourseStatus.Published && !isOwner && !isAdmin)
                 throw new ApiException("Course not found.", 404);
 
             return new CourseDetailDto
@@ -84,7 +86,7 @@ namespace LearnHub.Services
                 Description = course.Description,
                 ThumbnailUrl = course.ThumbnailUrl,
                 Category = course.Category,
-                IsPublished = course.IsPublished,
+                Status = course.Status,
                 InstructorId = course.InstructorId,
                 InstructorName = course.Instructor.Username,
                 CreatedAt = course.CreatedAt,
@@ -127,14 +129,98 @@ namespace LearnHub.Services
         {
             var course = await GetOwnedCourseAsync(id, instructorId);
 
-            if (course.IsPublished)
+            if (course.Status == CourseStatus.Published)
                 throw new ApiException("Unpublish the course before deleting it.", 400);
 
             _db.Courses.Remove(course);
             await _db.SaveChangesAsync();
         }
 
-        public async Task<CourseListItemDto> TogglePublishAsync(long id, long instructorId)
+        public async Task<CourseListItemDto> SubmitForReviewAsync(long id, long instructorId)
+        {
+            var course = await GetOwnedCourseWithContentAsync(id, instructorId);
+
+            if (course.Status != CourseStatus.Draft && course.Status != CourseStatus.Rejected)
+                throw new ApiException("Course is already published or under review.", 400);
+
+            var hasContent = course.Sections.Any(s => s.Lessons.Any());
+            if (!hasContent)
+                throw new ApiException("Add at least one section with a lesson before publishing.", 400);
+
+            course.Status = CourseStatus.PendingApproval;
+            await _db.SaveChangesAsync();
+
+            return MapListItem(course);
+        }
+
+        public async Task<CourseListItemDto> UnpublishAsync(long id, long instructorId)
+        {
+            var course = await GetOwnedCourseAsync(id, instructorId);
+
+            if (course.Status != CourseStatus.Published)
+                throw new ApiException("Course is not published.", 400);
+
+            course.Status = CourseStatus.Draft;
+            await _db.SaveChangesAsync();
+
+            return await ToListItemAsync(course.Id);
+        }
+
+        public async Task<CourseListItemDto> ApproveAsync(long id)
+        {
+            var course = await _db.Courses.Include(c => c.Instructor).FirstOrDefaultAsync(c => c.Id == id);
+            if (course is null)
+                throw new ApiException("Course not found.", 404);
+
+            if (course.Status != CourseStatus.PendingApproval)
+                throw new ApiException("Course is not awaiting review.", 400);
+
+            course.Status = CourseStatus.Published;
+            await _db.SaveChangesAsync();
+
+            return MapListItem(course);
+        }
+
+        public async Task<CourseListItemDto> RejectAsync(long id)
+        {
+            var course = await _db.Courses.Include(c => c.Instructor).FirstOrDefaultAsync(c => c.Id == id);
+            if (course is null)
+                throw new ApiException("Course not found.", 404);
+
+            if (course.Status != CourseStatus.PendingApproval)
+                throw new ApiException("Course is not awaiting review.", 400);
+
+            course.Status = CourseStatus.Rejected;
+            await _db.SaveChangesAsync();
+
+            return MapListItem(course);
+        }
+
+        public async Task<PagedResult<CourseListItemDto>> GetPendingApprovalAsync(int page, int pageSize)
+        {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            var query = _db.Courses.Include(c => c.Instructor).Where(c => c.Status == CourseStatus.PendingApproval);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .OrderBy(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => MapListItem(c))
+                .ToListAsync();
+
+            return new PagedResult<CourseListItemDto>
+            {
+                Items = items,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+            };
+        }
+
+        private async Task<Models.Course> GetOwnedCourseWithContentAsync(long id, long instructorId)
         {
             var course = await _db.Courses
                 .Include(c => c.Instructor)
@@ -148,17 +234,7 @@ namespace LearnHub.Services
             if (course.InstructorId != instructorId)
                 throw new ApiException("You do not own this course.", 403);
 
-            if (!course.IsPublished)
-            {
-                var hasContent = course.Sections.Any(s => s.Lessons.Any());
-                if (!hasContent)
-                    throw new ApiException("Add at least one section with a lesson before publishing.", 400);
-            }
-
-            course.IsPublished = !course.IsPublished;
-            await _db.SaveChangesAsync();
-
-            return MapListItem(course);
+            return course;
         }
 
         private async Task<Models.Course> GetOwnedCourseAsync(long id, long instructorId)
@@ -186,7 +262,7 @@ namespace LearnHub.Services
             Description = course.Description,
             ThumbnailUrl = course.ThumbnailUrl,
             Category = course.Category,
-            IsPublished = course.IsPublished,
+            Status = course.Status,
             InstructorId = course.InstructorId,
             InstructorName = course.Instructor.Username,
             CreatedAt = course.CreatedAt,

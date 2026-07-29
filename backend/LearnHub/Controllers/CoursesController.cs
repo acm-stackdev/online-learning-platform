@@ -24,13 +24,22 @@ namespace LearnHub.Controllers
             return Ok(result);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("pending")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPending([FromQuery] int page = 1, [FromQuery] int pageSize = 12)
+        {
+            var result = await _courseService.GetPendingApprovalAsync(page, pageSize);
+            return Ok(result);
+        }
+
+        [HttpGet("{id:long}")]
         public async Task<IActionResult> GetDetail(long id)
         {
             try
             {
                 long? requestingUserId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : null;
-                var result = await _courseService.GetDetailAsync(id, requestingUserId);
+                var isAdmin = User.IsInRole("Admin");
+                var result = await _courseService.GetDetailAsync(id, requestingUserId, isAdmin);
                 return Ok(result);
             }
             catch (ApiException ex)
@@ -77,13 +86,58 @@ namespace LearnHub.Controllers
             }
         }
 
-        [HttpPut("{id}/publish")]
+        [HttpPost("{id:long}/submit-for-review")]
         [Authorize(Roles = "Instructor")]
-        public async Task<IActionResult> TogglePublish(long id)
+        public async Task<IActionResult> SubmitForReview(long id)
         {
             try
             {
-                var result = await _courseService.TogglePublishAsync(id, User.GetUserId());
+                var result = await _courseService.SubmitForReviewAsync(id, User.GetUserId());
+                return Ok(result);
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{id:long}/unpublish")]
+        [Authorize(Roles = "Instructor")]
+        public async Task<IActionResult> Unpublish(long id)
+        {
+            try
+            {
+                var result = await _courseService.UnpublishAsync(id, User.GetUserId());
+                return Ok(result);
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{id:long}/approve")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Approve(long id)
+        {
+            try
+            {
+                var result = await _courseService.ApproveAsync(id);
+                return Ok(result);
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{id:long}/reject")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Reject(long id)
+        {
+            try
+            {
+                var result = await _courseService.RejectAsync(id);
                 return Ok(result);
             }
             catch (ApiException ex)

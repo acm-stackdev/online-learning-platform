@@ -1,5 +1,13 @@
 namespace LearnHub.Models
 {
+    public enum CourseStatus
+    {
+        Draft,
+        PendingApproval,
+        Published,
+        Rejected
+    }
+
     public class Course
     {
         public long Id { get; set; }
@@ -8,7 +16,7 @@ namespace LearnHub.Models
         public string Description { get; set;}
         public string? ThumbnailUrl { get; set;}
         public string? Category { get; set;}
-        public bool IsPublished { get; set;}
+        public CourseStatus Status { get; set; } = CourseStatus.Draft;
         public DateTime CreatedAt { get; set;}
 
         public User Instructor { get; set;}
