@@ -8,6 +8,7 @@ namespace LearnHub.Services
     public interface IFileUploadService
     {
         Task<string> UploadAsync(IFormFile file, ContentType contentType);
+        Task<string> UploadRawAsync(byte[] fileBytes, string fileName);
     }
 
     public class CloudinaryUploadService : IFileUploadService
@@ -40,6 +41,18 @@ namespace LearnHub.Services
 
                 return result.SecureUrl.ToString();
             }
+        }
+
+        public async Task<string> UploadRawAsync(byte[] fileBytes, string fileName)
+        {
+            using var stream = new MemoryStream(fileBytes);
+            var fileDescription = new FileDescription(fileName, stream);
+
+            var result = await _cloudinary.UploadAsync(new RawUploadParams { File = fileDescription });
+            if (result.Error is not null)
+                throw new ApiException($"File upload failed: {result.Error.Message}", 502);
+
+            return result.SecureUrl.ToString();
         }
     }
 }

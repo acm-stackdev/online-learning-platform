@@ -8,10 +8,12 @@ namespace LearnHub.Services
     public class ProgressService
     {
         private readonly AppDbContext _db;
+        private readonly CertificateService _certificateService;
 
-        public ProgressService(AppDbContext db)
+        public ProgressService(AppDbContext db, CertificateService certificateService)
         {
             _db = db;
+            _certificateService = certificateService;
         }
 
         public async Task<LessonProgressDto> UpdateProgressAsync(long lessonId, long studentId, UpdateLessonProgressDto dto)
@@ -112,6 +114,7 @@ namespace LearnHub.Services
             {
                 enrollment.IsCompleted = true;
                 await _db.SaveChangesAsync();
+                await _certificateService.IssueForEnrollmentAsync(enrollment.Id);
             }
         }
     }
