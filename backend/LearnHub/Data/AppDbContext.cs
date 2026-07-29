@@ -29,6 +29,12 @@ namespace LearnHub.Data
             .HasIndex(u => u.GoogleId)
             .IsUnique();
 
+        modelBuilder.Entity<Course>()
+            .HasOne(c => c.Instructor)
+            .WithMany(u => u.CoursesTaught)
+            .HasForeignKey(c => c.InstructorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<RefreshToken>()
             .HasOne(rt => rt.User)
             .WithMany()

@@ -19,7 +19,7 @@ namespace LearnHub.Models
             public bool IsEmailVerified { get; set; } = false;
             public DateTime CreatedAt { get; set;}
 
-            public ICollection<Course> EnrolledCourses {get; set;} = new List<Course>();
+            public ICollection<Course> CoursesTaught {get; set;} = new List<Course>();
             public ICollection<Enrollment> Enrollments {get; set;} = new List<Enrollment>();
         }
 }

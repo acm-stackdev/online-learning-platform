@@ -40,6 +40,8 @@ try{
     builder.Services.AddScoped<CourseService>();
     builder.Services.AddScoped<SectionService>();
     builder.Services.AddScoped<LessonService>();
+    builder.Services.AddScoped<EnrollmentService>();
+    builder.Services.AddScoped<ProgressService>();
 
     builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
     {

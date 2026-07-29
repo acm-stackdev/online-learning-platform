@@ -45,7 +45,7 @@ namespace LearnHub.Migrations
                     b.HasIndex("EnrollmentId")
                         .IsUnique();
 
-                    b.ToTable("Certificates");
+                    b.ToTable("Certificates", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.Course", b =>
@@ -84,7 +84,7 @@ namespace LearnHub.Migrations
 
                     b.HasIndex("InstructorId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.Enrollment", b =>
@@ -114,7 +114,7 @@ namespace LearnHub.Migrations
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("Enrollments");
+                    b.ToTable("Enrollments", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.Lesson", b =>
@@ -150,7 +150,7 @@ namespace LearnHub.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("Lessons");
+                    b.ToTable("Lessons", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.LessonProgress", b =>
@@ -183,7 +183,7 @@ namespace LearnHub.Migrations
                     b.HasIndex("EnrollmentId", "LessonId")
                         .IsUnique();
 
-                    b.ToTable("LessonProgress");
+                    b.ToTable("LessonProgress", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.RefreshToken", b =>
@@ -214,7 +214,7 @@ namespace LearnHub.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.Section", b =>
@@ -239,7 +239,7 @@ namespace LearnHub.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Section");
+                    b.ToTable("Section", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.User", b =>
@@ -282,7 +282,7 @@ namespace LearnHub.Migrations
                     b.HasIndex("GoogleId")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.VerificationToken", b =>
@@ -317,7 +317,7 @@ namespace LearnHub.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("VerificationTokens");
+                    b.ToTable("VerificationTokens", (string)null);
                 });
 
             modelBuilder.Entity("LearnHub.Models.Certificate", b =>
