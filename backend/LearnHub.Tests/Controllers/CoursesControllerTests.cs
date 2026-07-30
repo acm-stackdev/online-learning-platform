@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LearnHub.Controllers;
 using LearnHub.Data;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Course;
 using LearnHub.Services;
 using LearnHub.Tests.Fixtures;

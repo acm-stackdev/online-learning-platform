@@ -1,5 +1,5 @@
 using LearnHub.Data;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Course;
 using LearnHub.Models.DTOs.Enrollment;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +15,17 @@ namespace LearnHub.Services
             _db = db;
         }
 
-        public async Task<EnrollmentDto> EnrollAsync(long courseId, long studentId)
+        public async Task<EnrollmentDto> EnrollAsync(long courseId, long studentId, Role studentRole)
         {
+            if (studentRole == Role.Admin)
+                throw new ApiException("Admins cannot enroll in courses.", 403);
+
             var course = await _db.Courses.Include(c => c.Instructor).FirstOrDefaultAsync(c => c.Id == courseId);
             if (course is null)
                 throw new ApiException("Course not found.", 404);
+
+            if (course.InstructorId == studentId)
+                throw new ApiException("You cannot enroll in your own course.", 400);
 
             if (course.Status != CourseStatus.Published)
                 throw new ApiException("This course is not available for enrollment.", 400);
@@ -28,11 +34,11 @@ namespace LearnHub.Services
             if (alreadyEnrolled)
                 throw new ApiException("You are already enrolled in this course.", 409);
 
-            var enrollment = new Models.Enrollment
+            var enrollment = new Enrollment
             {
                 StudentId = studentId,
                 CourseId = courseId,
-                IsCompleted = false,
+                CompletedAt = null,
                 EnrolledAt = DateTime.UtcNow,
             };
 
@@ -77,7 +83,7 @@ namespace LearnHub.Services
                     StudentUsername = e.Student.Username,
                     StudentEmail = e.Student.Email,
                     EnrolledAt = e.EnrolledAt,
-                    IsCompleted = e.IsCompleted,
+                    CompletedAt = e.CompletedAt,
                 })
                 .ToListAsync();
         }
@@ -94,11 +100,11 @@ namespace LearnHub.Services
             return enrollments.Select(e => MapEnrollment(e, e.Course)).ToList();
         }
 
-        private static EnrollmentDto MapEnrollment(Models.Enrollment enrollment, Course course) => new()
+        private static EnrollmentDto MapEnrollment(Enrollment enrollment, Course course) => new()
         {
             Id = enrollment.Id,
             EnrolledAt = enrollment.EnrolledAt,
-            IsCompleted = enrollment.IsCompleted,
+            CompletedAt = enrollment.CompletedAt,
             Course = new CourseListItemDto
             {
                 Id = course.Id,

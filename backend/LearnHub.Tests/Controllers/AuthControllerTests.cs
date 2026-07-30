@@ -2,7 +2,7 @@ using FluentAssertions;
 using LearnHub.Controllers;
 using LearnHub.Data;
 using LearnHub.Helpers;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Auth;
 using LearnHub.Services;
 using LearnHub.Tests.Fixtures;
@@ -209,6 +209,63 @@ namespace LearnHub.Tests.Controllers
             var (_, controller, jwtHelper) = CreateSut();
 
             var result = await controller.VerifyEmail(new VerifyEmailDto { Token = jwtHelper.GenerateRefreshToken() });
+
+            var obj = result.Should().BeOfType<ObjectResult>().Subject;
+            obj.StatusCode.Should().Be(400);
+        }
+
+        // ----- POST /api/auth/forgot-password -----
+
+        [Fact]
+        public async Task ForgotPassword_ExistingEmail_Returns200WithGenericMessage()
+        {
+            var (db, controller, _) = CreateSut();
+            SeedUser(db, "hasaccount@student.com", "password123", isVerified: true);
+
+            var result = await controller.ForgotPassword(new ForgotPasswordDto { Email = "hasaccount@student.com" });
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        [Fact]
+        public async Task ForgotPassword_UnknownEmail_Returns200WithGenericMessage()
+        {
+            var (_, controller, _) = CreateSut();
+
+            var result = await controller.ForgotPassword(new ForgotPasswordDto { Email = "nobody@student.com" });
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        // ----- POST /api/auth/reset-password -----
+
+        [Fact]
+        public async Task ResetPassword_ValidToken_Returns200WithMessage()
+        {
+            var (db, controller, jwtHelper) = CreateSut();
+            var user = SeedUser(db, "resetme@student.com", "oldpassword123", isVerified: true);
+            var rawToken = jwtHelper.GenerateRefreshToken();
+            db.VerificationTokens.Add(new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.PasswordReset,
+                ExpiresAt = DateTime.UtcNow.AddHours(1),
+                CreatedAt = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            var result = await controller.ResetPassword(new ResetPasswordDto { Token = rawToken, NewPassword = "newpassword123" });
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        [Fact]
+        public async Task ResetPassword_InvalidToken_Returns400WithApiExceptionMessage()
+        {
+            var (_, controller, jwtHelper) = CreateSut();
+
+            var result = await controller.ResetPassword(new ResetPasswordDto { Token = jwtHelper.GenerateRefreshToken(), NewPassword = "newpassword123" });
 
             var obj = result.Should().BeOfType<ObjectResult>().Subject;
             obj.StatusCode.Should().Be(400);

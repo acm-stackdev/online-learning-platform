@@ -1,5 +1,5 @@
 using LearnHub.Data;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Progress;
 using Microsoft.EntityFrameworkCore;
 
@@ -96,7 +96,7 @@ namespace LearnHub.Services
                 TotalLessons = totalLessons,
                 CompletedLessons = completedLessons,
                 PercentComplete = totalLessons > 0 ? Math.Round((double)completedLessons / totalLessons * 100, 1) : 0,
-                IsCourseCompleted = enrollment.IsCompleted,
+                IsCourseCompleted = enrollment.CompletedAt != null,
                 Lessons = lessonDtos,
             };
         }
@@ -110,9 +110,9 @@ namespace LearnHub.Services
             var completedLessons = await _db.LessonProgress
                 .CountAsync(p => p.EnrollmentId == enrollment.Id && p.IsCompleted);
 
-            if (completedLessons >= totalLessons && !enrollment.IsCompleted)
+            if (completedLessons >= totalLessons && enrollment.CompletedAt is null)
             {
-                enrollment.IsCompleted = true;
+                enrollment.CompletedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
                 await _certificateService.IssueForEnrollmentAsync(enrollment.Id);
             }

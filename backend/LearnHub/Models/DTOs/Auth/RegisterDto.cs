@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using LearnHub.Models.Entities;
 
 namespace LearnHub.Models.DTOs.Auth
 {
@@ -12,5 +13,8 @@ namespace LearnHub.Models.DTOs.Auth
 
         [Required, MinLength(8)]
         public string Password { get; set; }
+
+        [Required]
+        public Role Role { get; set; }
     }
 }

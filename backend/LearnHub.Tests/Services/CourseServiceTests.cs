@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LearnHub.Data;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Course;
 using LearnHub.Services;
 using LearnHub.Tests.Fixtures;
@@ -218,6 +218,75 @@ namespace LearnHub.Tests.Services
 
             var ex = await act.Should().ThrowAsync<ApiException>();
             ex.Which.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task GetDetailAsync_NonEnrolledLoggedInUser_ContentUrlIsHidden()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published, withContent: true);
+            var otherStudent = new User { Username = "student", Email = "student@learnhub.com", Role = Role.Student, IsEmailVerified = true, CreatedAt = DateTime.UtcNow };
+            db.Users.Add(otherStudent);
+            db.SaveChanges();
+
+            var result = await sut.GetDetailAsync(course.Id, requestingUserId: otherStudent.Id, isAdmin: false);
+
+            result.Sections.Single().Lessons.Single().ContentUrl.Should().BeNull();
+            result.Sections.Single().Lessons.Single().Title.Should().Be("Lesson 1");
+        }
+
+        [Fact]
+        public async Task GetDetailAsync_AnonymousViewer_ContentUrlIsHidden()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published, withContent: true);
+
+            var result = await sut.GetDetailAsync(course.Id, requestingUserId: null, isAdmin: false);
+
+            result.Sections.Single().Lessons.Single().ContentUrl.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetDetailAsync_EnrolledStudent_SeesContentUrl()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published, withContent: true);
+            var student = new User { Username = "student", Email = "student@learnhub.com", Role = Role.Student, IsEmailVerified = true, CreatedAt = DateTime.UtcNow };
+            db.Users.Add(student);
+            db.SaveChanges();
+            db.Enrollments.Add(new Enrollment { StudentId = student.Id, CourseId = course.Id, EnrolledAt = DateTime.UtcNow });
+            db.SaveChanges();
+
+            var result = await sut.GetDetailAsync(course.Id, requestingUserId: student.Id, isAdmin: false);
+
+            result.Sections.Single().Lessons.Single().ContentUrl.Should().Be("https://example.com/video.mp4");
+        }
+
+        [Fact]
+        public async Task GetDetailAsync_OwningInstructor_SeesContentUrl()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published, withContent: true);
+
+            var result = await sut.GetDetailAsync(course.Id, requestingUserId: instructor.Id, isAdmin: false);
+
+            result.Sections.Single().Lessons.Single().ContentUrl.Should().Be("https://example.com/video.mp4");
+        }
+
+        [Fact]
+        public async Task GetDetailAsync_Admin_SeesContentUrl()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published, withContent: true);
+
+            var result = await sut.GetDetailAsync(course.Id, requestingUserId: 999, isAdmin: true);
+
+            result.Sections.Single().Lessons.Single().ContentUrl.Should().Be("https://example.com/video.mp4");
         }
 
         // ----- UpdateAsync -----

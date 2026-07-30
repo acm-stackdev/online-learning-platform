@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LearnHub.Data;
 using LearnHub.Helpers;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Auth;
 using LearnHub.Services;
 using LearnHub.Tests.Fixtures;
@@ -86,6 +86,32 @@ namespace LearnHub.Tests.Services
             ex.Which.Message.Should().Contain("already exists");
 
             db.Users.Count().Should().Be(1);
+            emailMock.Verify(x => x.SendVerificationEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_InstructorRole_CreatesInstructor()
+        {
+            var (db, sut, _, _) = CreateSut();
+            var dto = new RegisterDto { Username = "newinstructor", Email = "new@instructor.com", Password = "password123", Role = Role.Instructor };
+
+            var result = await sut.RegisterAsync(dto);
+
+            result.Role.Should().Be(Role.Instructor);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_AdminRole_ThrowsApiException()
+        {
+            var (db, sut, _, emailMock) = CreateSut();
+            var dto = new RegisterDto { Username = "wannabeadmin", Email = "new@admin.com", Password = "password123", Role = Role.Admin };
+
+            var act = async () => await sut.RegisterAsync(dto);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+
+            db.Users.Count().Should().Be(0);
             emailMock.Verify(x => x.SendVerificationEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
@@ -371,6 +397,150 @@ namespace LearnHub.Tests.Services
             await db.SaveChangesAsync();
 
             var act = async () => await sut.VerifyEmailAsync(rawToken);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+        }
+
+        // ----- ForgotPasswordAsync -----
+
+        [Fact]
+        public async Task ForgotPasswordAsync_ExistingPasswordUser_SendsResetEmailAndCreatesToken()
+        {
+            var (db, sut, _, emailMock) = CreateSut();
+            var user = SeedUser(db, "hasPassword@student.com", "password123", isVerified: true);
+
+            await sut.ForgotPasswordAsync(new ForgotPasswordDto { Email = user.Email });
+
+            db.VerificationTokens.Should().ContainSingle(vt => vt.UserId == user.Id && vt.Purpose == TokenPurpose.PasswordReset);
+            emailMock.Verify(x => x.SendPasswordResetEmailAsync(user.Email, user.Username, It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ForgotPasswordAsync_UnknownEmail_DoesNotThrowAndSendsNoEmail()
+        {
+            var (db, sut, _, emailMock) = CreateSut();
+
+            var act = async () => await sut.ForgotPasswordAsync(new ForgotPasswordDto { Email = "nobody@student.com" });
+
+            await act.Should().NotThrowAsync();
+            db.VerificationTokens.Should().BeEmpty();
+            emailMock.Verify(x => x.SendPasswordResetEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ForgotPasswordAsync_GoogleOnlyAccount_DoesNotThrowAndSendsNoEmail()
+        {
+            var (db, sut, _, emailMock) = CreateSut();
+            var user = SeedUser(db, "googleonly@student.com", rawPassword: null, isVerified: true, googleId: "google-123");
+
+            var act = async () => await sut.ForgotPasswordAsync(new ForgotPasswordDto { Email = user.Email });
+
+            await act.Should().NotThrowAsync();
+            db.VerificationTokens.Should().BeEmpty();
+            emailMock.Verify(x => x.SendPasswordResetEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        // ----- ResetPasswordAsync -----
+
+        [Fact]
+        public async Task ResetPasswordAsync_ValidToken_UpdatesPasswordAndConsumesToken()
+        {
+            var (db, sut, jwtHelper, _) = CreateSut();
+            var user = SeedUser(db, "resetme@student.com", "oldpassword123", isVerified: true);
+            var rawToken = jwtHelper.GenerateRefreshToken();
+            var tokenRow = new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.PasswordReset,
+                ExpiresAt = DateTime.UtcNow.AddHours(1),
+                CreatedAt = DateTime.UtcNow,
+            };
+            db.VerificationTokens.Add(tokenRow);
+            await db.SaveChangesAsync();
+
+            await sut.ResetPasswordAsync(new ResetPasswordDto { Token = rawToken, NewPassword = "newpassword123" });
+
+            var updatedUser = (await db.Users.FindAsync(user.Id))!;
+            new PasswordHasher<User>().VerifyHashedPassword(updatedUser, updatedUser.PasswordHash!, "newpassword123")
+                .Should().Be(PasswordVerificationResult.Success);
+            (await db.VerificationTokens.FindAsync(tokenRow.Id))!.UsedAt.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_UnknownToken_ThrowsApiException()
+        {
+            var (_, sut, jwtHelper, _) = CreateSut();
+
+            var act = async () => await sut.ResetPasswordAsync(new ResetPasswordDto { Token = jwtHelper.GenerateRefreshToken(), NewPassword = "newpassword123" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_AlreadyUsedToken_ThrowsApiException()
+        {
+            var (db, sut, jwtHelper, _) = CreateSut();
+            var user = SeedUser(db, "usedreset@student.com", "password123", isVerified: true);
+            var rawToken = jwtHelper.GenerateRefreshToken();
+            db.VerificationTokens.Add(new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.PasswordReset,
+                ExpiresAt = DateTime.UtcNow.AddHours(1),
+                CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+                UsedAt = DateTime.UtcNow.AddMinutes(-10),
+            });
+            await db.SaveChangesAsync();
+
+            var act = async () => await sut.ResetPasswordAsync(new ResetPasswordDto { Token = rawToken, NewPassword = "newpassword123" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_ExpiredToken_ThrowsApiException()
+        {
+            var (db, sut, jwtHelper, _) = CreateSut();
+            var user = SeedUser(db, "expiredreset@student.com", "password123", isVerified: true);
+            var rawToken = jwtHelper.GenerateRefreshToken();
+            db.VerificationTokens.Add(new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.PasswordReset,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(-1),
+                CreatedAt = DateTime.UtcNow.AddHours(-2),
+            });
+            await db.SaveChangesAsync();
+
+            var act = async () => await sut.ResetPasswordAsync(new ResetPasswordDto { Token = rawToken, NewPassword = "newpassword123" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_VerificationTokenWrongPurpose_ThrowsApiException()
+        {
+            var (db, sut, jwtHelper, _) = CreateSut();
+            var user = SeedUser(db, "wrongpurpose@student.com", "password123", isVerified: false);
+            var rawToken = jwtHelper.GenerateRefreshToken();
+            db.VerificationTokens.Add(new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.EmailVerification,
+                ExpiresAt = DateTime.UtcNow.AddHours(24),
+                CreatedAt = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            var act = async () => await sut.ResetPasswordAsync(new ResetPasswordDto { Token = rawToken, NewPassword = "newpassword123" });
 
             var ex = await act.Should().ThrowAsync<ApiException>();
             ex.Which.StatusCode.Should().Be(400);

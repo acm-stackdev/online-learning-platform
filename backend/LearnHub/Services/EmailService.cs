@@ -7,6 +7,7 @@ namespace LearnHub.Services
     public interface IEmailService
     {
         Task SendVerificationEmailAsync(string toEmail, string username, string verifyLink);
+        Task SendPasswordResetEmailAsync(string toEmail, string username, string resetLink);
     }
 
     public class EmailService : IEmailService
@@ -31,6 +32,22 @@ namespace LearnHub.Services
                 {verifyLink}
 
                 This link expires in 24 hours. If you didn't create this account, you can ignore this email.
+                """;
+
+            return SendAsync(toEmail, subject, body);
+        }
+
+        public Task SendPasswordResetEmailAsync(string toEmail, string username, string resetLink)
+        {
+            var subject = "Reset your LearnHub password";
+            var body = $"""
+                Hi {username},
+
+                We received a request to reset your LearnHub password. Click the link below to choose a new one:
+
+                {resetLink}
+
+                This link expires in 1 hour. If you didn't request a password reset, you can ignore this email.
                 """;
 
             return SendAsync(toEmail, subject, body);

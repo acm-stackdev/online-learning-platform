@@ -1,6 +1,6 @@
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using Microsoft.AspNetCore.Http;
 
 namespace LearnHub.Services

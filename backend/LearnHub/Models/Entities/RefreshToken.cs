@@ -1,4 +1,4 @@
-namespace LearnHub.Models
+namespace LearnHub.Models.Entities
 {
     public class RefreshToken
     {

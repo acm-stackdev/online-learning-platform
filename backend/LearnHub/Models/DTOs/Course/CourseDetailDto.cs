@@ -1,3 +1,5 @@
+using LearnHub.Models.Entities;
+
 namespace LearnHub.Models.DTOs.Course
 {
     public class LessonSummaryDto
@@ -5,7 +7,7 @@ namespace LearnHub.Models.DTOs.Course
         public long Id { get; set; }
         public string Title { get; set; }
         public ContentType ContentType { get; set; }
-        public string ContentUrl { get; set; }
+        public string? ContentUrl { get; set; }
         public int Duration { get; set; }
         public int Order { get; set; }
     }

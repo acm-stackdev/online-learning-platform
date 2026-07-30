@@ -1,6 +1,7 @@
 using LearnHub.Data;
 using LearnHub.Helpers;
 using LearnHub.Models.DTOs.Auth;
+using LearnHub.Models.Entities;
 using LearnHub.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -86,6 +87,27 @@ namespace LearnHub.Controllers
             }
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+        {
+            await _authService.ForgotPasswordAsync(dto);
+            return Ok(new { message = "If an account with this email exists, we've sent password reset instructions." });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+        {
+            try
+            {
+                await _authService.ResetPasswordAsync(dto);
+                return Ok(new { message = "Password reset successfully. You can now log in." });
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {
@@ -154,7 +176,7 @@ namespace LearnHub.Controllers
             });
         }
 
-        private static UserResponseDto ToUserResponse(Models.User user) => new()
+        private static UserResponseDto ToUserResponse(User user) => new()
         {
             Id = user.Id,
             Username = user.Username,

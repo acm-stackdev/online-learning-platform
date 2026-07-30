@@ -1,5 +1,5 @@
 using LearnHub.Data;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Course;
 using Microsoft.EntityFrameworkCore;
 

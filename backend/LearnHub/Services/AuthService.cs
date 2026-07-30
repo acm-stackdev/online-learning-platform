@@ -1,7 +1,7 @@
 using Google.Apis.Auth;
 using LearnHub.Data;
 using LearnHub.Helpers;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +21,7 @@ namespace LearnHub.Services
         private readonly IConfiguration _config;
         private const int RefreshTokenDays = 7;
         private const int VerificationTokenHours = 24;
+        private const int PasswordResetTokenHours = 1;
 
         public AuthService(AppDbContext db, JwtHelper jwtHelper, IConfiguration config, IEmailService emailService)
         {
@@ -33,6 +34,9 @@ namespace LearnHub.Services
 
         public async Task<User> RegisterAsync(RegisterDto dto)
         {
+            if (dto.Role == Role.Admin)
+                throw new ApiException("You cannot register as an admin.", 400);
+
             var exists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
             if (exists)
                 throw new ApiException("An account with this email already exists.", 409);
@@ -41,7 +45,7 @@ namespace LearnHub.Services
             {
                 Username = dto.Username,
                 Email = dto.Email,
-                Role = Role.Student,
+                Role = dto.Role,
                 IsEmailVerified = false,
                 CreatedAt = DateTime.UtcNow,
             };
@@ -166,6 +170,44 @@ namespace LearnHub.Services
 
             stored.UsedAt = DateTime.UtcNow;
             stored.User.IsEmailVerified = true;
+            await _db.SaveChangesAsync();
+        }
+
+        public async Task ForgotPasswordAsync(ForgotPasswordDto dto)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (user is null || user.PasswordHash is null)
+                return;
+
+            var rawToken = _jwtHelper.GenerateRefreshToken();
+
+            _db.VerificationTokens.Add(new VerificationToken
+            {
+                UserId = user.Id,
+                TokenHash = _jwtHelper.HashToken(rawToken),
+                Purpose = TokenPurpose.PasswordReset,
+                ExpiresAt = DateTime.UtcNow.AddHours(PasswordResetTokenHours),
+                CreatedAt = DateTime.UtcNow,
+            });
+            await _db.SaveChangesAsync();
+
+            var baseUrl = _config["Frontend:BaseUrl"];
+            var link = $"{baseUrl}/reset-password?token={Uri.EscapeDataString(rawToken)}";
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.Username, link);
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            var hash = _jwtHelper.HashToken(dto.Token);
+            var stored = await _db.VerificationTokens
+                .Include(vt => vt.User)
+                .FirstOrDefaultAsync(vt => vt.TokenHash == hash && vt.Purpose == TokenPurpose.PasswordReset);
+
+            if (stored is null || stored.UsedAt is not null || stored.ExpiresAt < DateTime.UtcNow)
+                throw new ApiException("Invalid or expired reset link.", 400);
+
+            stored.User.PasswordHash = _passwordHasher.HashPassword(stored.User, dto.NewPassword);
+            stored.UsedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
         }
 

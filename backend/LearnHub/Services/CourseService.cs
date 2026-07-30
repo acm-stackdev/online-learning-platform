@@ -1,5 +1,5 @@
 using LearnHub.Data;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Common;
 using LearnHub.Models.DTOs.Course;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +17,7 @@ namespace LearnHub.Services
 
         public async Task<CourseListItemDto> CreateAsync(CreateCourseDto dto, long instructorId)
         {
-            var course = new Models.Course
+            var course = new Course
             {
                 Title = dto.Title,
                 Description = dto.Description,
@@ -79,6 +79,10 @@ namespace LearnHub.Services
             if (course.Status != CourseStatus.Published && !isOwner && !isAdmin)
                 throw new ApiException("Course not found.", 404);
 
+            var isEnrolled = requestingUserId.HasValue &&
+                await _db.Enrollments.AnyAsync(e => e.StudentId == requestingUserId.Value && e.CourseId == id);
+            var canSeeContent = isOwner || isAdmin || isEnrolled;
+
             return new CourseDetailDto
             {
                 Id = course.Id,
@@ -104,7 +108,7 @@ namespace LearnHub.Services
                                 Id = l.Id,
                                 Title = l.Title,
                                 ContentType = l.ContentType,
-                                ContentUrl = l.ContentUrl,
+                                ContentUrl = canSeeContent ? l.ContentUrl : null,
                                 Duration = l.Duration,
                                 Order = l.Order,
                             }).ToList(),
@@ -221,7 +225,7 @@ namespace LearnHub.Services
             };
         }
 
-        private async Task<Models.Course> GetOwnedCourseWithContentAsync(long id, long instructorId)
+        private async Task<Course> GetOwnedCourseWithContentAsync(long id, long instructorId)
         {
             var course = await _db.Courses
                 .Include(c => c.Instructor)
@@ -238,7 +242,7 @@ namespace LearnHub.Services
             return course;
         }
 
-        private async Task<Models.Course> GetOwnedCourseAsync(long id, long instructorId)
+        private async Task<Course> GetOwnedCourseAsync(long id, long instructorId)
         {
             var course = await _db.Courses.FirstOrDefaultAsync(c => c.Id == id);
             if (course is null)
@@ -256,7 +260,7 @@ namespace LearnHub.Services
             return MapListItem(course);
         }
 
-        private static CourseListItemDto MapListItem(Models.Course course) => new()
+        private static CourseListItemDto MapListItem(Course course) => new()
         {
             Id = course.Id,
             Title = course.Title,

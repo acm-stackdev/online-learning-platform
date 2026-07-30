@@ -1,4 +1,4 @@
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 
 namespace LearnHub.Models.DTOs.Course
 {

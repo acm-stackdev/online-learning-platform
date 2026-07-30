@@ -88,7 +88,7 @@ namespace LearnHub.Controllers
         }
 
         [HttpPut("{id:long}/progress")]
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Instructor")]
         public async Task<IActionResult> UpdateProgress(long id, UpdateLessonProgressDto dto)
         {
             try

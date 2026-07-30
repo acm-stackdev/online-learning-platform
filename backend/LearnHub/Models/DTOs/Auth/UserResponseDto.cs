@@ -1,3 +1,5 @@
+using LearnHub.Models.Entities;
+
 namespace LearnHub.Models.DTOs.Auth
 {
     public class UserResponseDto

@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using Microsoft.AspNetCore.Http;
 
 namespace LearnHub.Models.DTOs.Course

@@ -21,12 +21,12 @@ namespace LearnHub.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Instructor")]
         public async Task<IActionResult> Create(CreateEnrollmentDto dto)
         {
             try
             {
-                var result = await _enrollmentService.EnrollAsync(dto.CourseId, User.GetUserId());
+                var result = await _enrollmentService.EnrollAsync(dto.CourseId, User.GetUserId(), User.GetRole());
                 return Ok(result);
             }
             catch (ApiException ex)
@@ -52,7 +52,7 @@ namespace LearnHub.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Instructor")]
         public async Task<IActionResult> GetMine()
         {
             var result = await _enrollmentService.GetMyEnrollmentsAsync(User.GetUserId());
@@ -60,7 +60,7 @@ namespace LearnHub.Controllers
         }
 
         [HttpGet("{id:long}/progress")]
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Instructor")]
         public async Task<IActionResult> GetProgress(long id)
         {
             try

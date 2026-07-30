@@ -7,6 +7,6 @@ namespace LearnHub.Models.DTOs.Enrollment
         public long Id { get; set; }
         public CourseListItemDto Course { get; set; }
         public DateTime EnrolledAt { get; set; }
-        public bool IsCompleted { get; set; }
+        public DateTime? CompletedAt { get; set; }
     }
 }

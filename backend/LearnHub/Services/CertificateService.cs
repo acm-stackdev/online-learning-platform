@@ -1,6 +1,6 @@
 using LearnHub.Data;
 using LearnHub.Helpers;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using LearnHub.Models.DTOs.Certificate;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,7 +41,7 @@ namespace LearnHub.Services
             var fileName = $"certificate-{enrollmentId}.pdf";
             var certificateUrl = await _fileUploadService.UploadRawAsync(pdfBytes, fileName);
 
-            _db.Certificates.Add(new Models.Certificate
+            _db.Certificates.Add(new Certificate
             {
                 EnrollmentId = enrollmentId,
                 CertificateUrl = certificateUrl,

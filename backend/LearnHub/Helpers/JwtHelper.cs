@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using LearnHub.Models;
+using LearnHub.Models.Entities;
 using Microsoft.IdentityModel.Tokens;
 
 namespace LearnHub.Helpers
