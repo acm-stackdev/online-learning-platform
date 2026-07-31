@@ -54,7 +54,7 @@ namespace LearnHub.Tests.Services
         public async Task RegisterAsync_ValidInput_CreatesUnverifiedUserAndSendsVerificationEmail()
         {
             var (db, sut, _, emailMock) = CreateSut();
-            var dto = new RegisterDto { Username = "newstudent", Email = "new@student.com", Password = "password123" };
+            var dto = new RegisterDto { Username = "newstudent", Email = "new@student.com", Password = "password123", Role = Role.Student };
 
             var result = await sut.RegisterAsync(dto);
 
@@ -77,7 +77,7 @@ namespace LearnHub.Tests.Services
         {
             var (db, sut, _, emailMock) = CreateSut();
             SeedUser(db, "taken@student.com", "password123", isVerified: true);
-            var dto = new RegisterDto { Username = "someoneelse", Email = "taken@student.com", Password = "password123" };
+            var dto = new RegisterDto { Username = "someoneelse", Email = "taken@student.com", Password = "password123", Role = Role.Student };
 
             var act = async () => await sut.RegisterAsync(dto);
 
@@ -105,6 +105,21 @@ namespace LearnHub.Tests.Services
         {
             var (db, sut, _, emailMock) = CreateSut();
             var dto = new RegisterDto { Username = "wannabeadmin", Email = "new@admin.com", Password = "password123", Role = Role.Admin };
+
+            var act = async () => await sut.RegisterAsync(dto);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+
+            db.Users.Count().Should().Be(0);
+            emailMock.Verify(x => x.SendVerificationEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_NoRole_ThrowsApiException()
+        {
+            var (db, sut, _, emailMock) = CreateSut();
+            var dto = new RegisterDto { Username = "noroleuser", Email = "new@norole.com", Password = "password123", Role = null };
 
             var act = async () => await sut.RegisterAsync(dto);
 

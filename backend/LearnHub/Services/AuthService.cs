@@ -34,6 +34,9 @@ namespace LearnHub.Services
 
         public async Task<User> RegisterAsync(RegisterDto dto)
         {
+            if (dto.Role is null)
+                throw new ApiException("You must choose a role.", 400);
+
             if (dto.Role == Role.Admin)
                 throw new ApiException("You cannot register as an admin.", 400);
 
@@ -45,7 +48,7 @@ namespace LearnHub.Services
             {
                 Username = dto.Username,
                 Email = dto.Email,
-                Role = dto.Role,
+                Role = dto.Role.Value,
                 IsEmailVerified = false,
                 CreatedAt = DateTime.UtcNow,
             };

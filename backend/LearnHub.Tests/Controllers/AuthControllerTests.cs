@@ -74,7 +74,7 @@ namespace LearnHub.Tests.Controllers
         public async Task Register_ValidInput_Returns200WithMessage()
         {
             var (_, controller, _) = CreateSut();
-            var dto = new RegisterDto { Username = "newstudent", Email = "new@student.com", Password = "password123" };
+            var dto = new RegisterDto { Username = "newstudent", Email = "new@student.com", Password = "password123", Role = Role.Student };
 
             var result = await controller.Register(dto);
 
@@ -88,7 +88,7 @@ namespace LearnHub.Tests.Controllers
         {
             var (db, controller, _) = CreateSut();
             SeedUser(db, "taken@student.com", "password123", isVerified: true);
-            var dto = new RegisterDto { Username = "someoneelse", Email = "taken@student.com", Password = "password123" };
+            var dto = new RegisterDto { Username = "someoneelse", Email = "taken@student.com", Password = "password123", Role = Role.Student };
 
             var result = await controller.Register(dto);
 
