@@ -2,6 +2,7 @@ using System.Text;
 using CloudinaryDotNet;
 using LearnHub.Data;
 using LearnHub.Helpers;
+using LearnHub.Hubs;
 using LearnHub.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,7 @@ try{
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+    builder.Services.AddSignalR();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -35,6 +37,7 @@ try{
 
     builder.Services.AddSingleton<JwtHelper>();
     builder.Services.AddSingleton<IEmailService, EmailService>();
+    builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
     builder.Services.AddScoped<IFileUploadService, CloudinaryUploadService>();
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<CourseService>();
@@ -43,6 +46,7 @@ try{
     builder.Services.AddScoped<EnrollmentService>();
     builder.Services.AddScoped<CertificateService>();
     builder.Services.AddScoped<ProgressService>();
+    builder.Services.AddScoped<MessagingService>();
 
     builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
     {
@@ -105,6 +109,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<MessagingHub>("/hubs/messaging");
 
 
 app.Run();

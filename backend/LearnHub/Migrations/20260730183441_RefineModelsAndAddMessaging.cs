@@ -12,10 +12,6 @@ namespace LearnHub.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "IsCompleted",
-                table: "Enrollments");
-
             migrationBuilder.AddColumn<string>(
                 name: "AvatarUrl",
                 table: "Users",
@@ -47,6 +43,19 @@ namespace LearnHub.Migrations
                 table: "Enrollments",
                 type: "timestamp with time zone",
                 nullable: true);
+
+            migrationBuilder.Sql(@"
+                UPDATE ""Enrollments"" e
+                SET ""CompletedAt"" = COALESCE(
+                    (SELECT c.""IssuedAt"" FROM ""Certificates"" c WHERE c.""EnrollmentId"" = e.""Id""),
+                    NOW()
+                )
+                WHERE e.""IsCompleted"" = TRUE;
+            ");
+
+            migrationBuilder.DropColumn(
+                name: "IsCompleted",
+                table: "Enrollments");
 
             migrationBuilder.AddColumn<DateTime>(
                 name: "UpdatedAt",
