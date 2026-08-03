@@ -28,7 +28,7 @@ namespace LearnHub.Tests.Services
             return (db, sut, jwtHelper, emailMock);
         }
 
-        private static User SeedUser(AppDbContext db, string email, string? rawPassword, bool isVerified, Role role = Role.Student, string? googleId = null)
+        private static User SeedUser(AppDbContext db, string email, string? rawPassword, bool isVerified, Role role = Role.Student, string? googleId = null, bool isSuspended = false)
         {
             var user = new User
             {
@@ -37,6 +37,7 @@ namespace LearnHub.Tests.Services
                 Role = role,
                 IsEmailVerified = isVerified,
                 GoogleId = googleId,
+                IsSuspended = isSuspended,
                 CreatedAt = DateTime.UtcNow,
             };
 
@@ -198,6 +199,32 @@ namespace LearnHub.Tests.Services
 
             var ex = await act.Should().ThrowAsync<ApiException>();
             ex.Which.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task LoginAsync_SuspendedAccount_ThrowsApiException()
+        {
+            var (db, sut, _, _) = CreateSut();
+            SeedUser(db, "suspended@student.com", "password123", isVerified: true, isSuspended: true);
+            var dto = new LoginDto { Email = "suspended@student.com", Password = "password123" };
+
+            var act = async () => await sut.LoginAsync(dto);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task LoginAsync_SuspendedAndUnverified_ReportsSuspensionFirst()
+        {
+            var (db, sut, _, _) = CreateSut();
+            SeedUser(db, "suspendedunverified@student.com", "password123", isVerified: false, isSuspended: true);
+            var dto = new LoginDto { Email = "suspendedunverified@student.com", Password = "password123" };
+
+            var act = async () => await sut.LoginAsync(dto);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.Message.Should().Contain("suspended");
         }
 
         // ----- RefreshAsync -----

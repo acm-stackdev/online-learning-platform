@@ -282,6 +282,33 @@ namespace LearnHub.Tests.Controllers
             result.Should().BeOfType<OkObjectResult>();
         }
 
+        // ----- PUT /api/courses/{id}/force-unpublish -----
+
+        [Fact]
+        public async Task ForceUnpublish_PublishedCourse_ReturnsOk()
+        {
+            var (db, controller) = CreateSut(ControllerTestHelpers.BuildUserPrincipal(1, role: "Admin"));
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published);
+
+            var result = await controller.ForceUnpublish(course.Id);
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        [Fact]
+        public async Task ForceUnpublish_NotPublished_Returns400()
+        {
+            var (db, controller) = CreateSut(ControllerTestHelpers.BuildUserPrincipal(1, role: "Admin"));
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Draft);
+
+            var result = await controller.ForceUnpublish(course.Id);
+
+            var obj = result.Should().BeOfType<ObjectResult>().Subject;
+            obj.StatusCode.Should().Be(400);
+        }
+
         // ----- POST /api/courses/{id}/approve -----
 
         [Fact]

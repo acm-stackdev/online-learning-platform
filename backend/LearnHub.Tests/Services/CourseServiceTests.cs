@@ -556,6 +556,44 @@ namespace LearnHub.Tests.Services
             ex.Which.StatusCode.Should().Be(404);
         }
 
+        // ----- ForceUnpublishAsync -----
+
+        [Fact]
+        public async Task ForceUnpublishAsync_PublishedCourse_SetsDraft()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Published);
+
+            var result = await sut.ForceUnpublishAsync(course.Id);
+
+            result.Status.Should().Be(CourseStatus.Draft);
+        }
+
+        [Fact]
+        public async Task ForceUnpublishAsync_NotPublished_ThrowsApiException()
+        {
+            var (db, sut) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var course = SeedCourse(db, instructor.Id, CourseStatus.Draft);
+
+            var act = async () => await sut.ForceUnpublishAsync(course.Id);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task ForceUnpublishAsync_UnknownId_ThrowsApiException()
+        {
+            var (_, sut) = CreateSut();
+
+            var act = async () => await sut.ForceUnpublishAsync(12345);
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(404);
+        }
+
         // ----- GetPendingApprovalAsync -----
 
         [Fact]

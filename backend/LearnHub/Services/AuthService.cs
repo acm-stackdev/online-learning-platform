@@ -75,6 +75,9 @@ namespace LearnHub.Services
             if (result == PasswordVerificationResult.Failed)
                 throw new ApiException("Invalid email or password.", 401);
 
+            if (user.IsSuspended)
+                throw new ApiException("Your account has been suspended. Please contact support.", 403);
+
             if (!user.IsEmailVerified)
                 throw new ApiException("Please verify your email before logging in.", 403);
 
@@ -126,6 +129,9 @@ namespace LearnHub.Services
                 await IssueVerificationTokenAsync(user);
                 return new GoogleLoginResult(user, null, null, true);
             }
+
+            if (user.IsSuspended)
+                throw new ApiException("Your account has been suspended. Please contact support.", 403);
 
             if (!user.IsEmailVerified)
                 throw new ApiException("Please verify your email before logging in.", 403);

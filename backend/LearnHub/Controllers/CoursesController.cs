@@ -116,6 +116,21 @@ namespace LearnHub.Controllers
             }
         }
 
+        [HttpPut("{id:long}/force-unpublish")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ForceUnpublish(long id)
+        {
+            try
+            {
+                var result = await _courseService.ForceUnpublishAsync(id);
+                return Ok(result);
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
         [HttpPost("{id:long}/approve")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Approve(long id)

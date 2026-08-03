@@ -201,6 +201,21 @@ namespace LearnHub.Services
             return MapListItem(course);
         }
 
+        public async Task<CourseListItemDto> ForceUnpublishAsync(long id)
+        {
+            var course = await _db.Courses.Include(c => c.Instructor).FirstOrDefaultAsync(c => c.Id == id);
+            if (course is null)
+                throw new ApiException("Course not found.", 404);
+
+            if (course.Status != CourseStatus.Published)
+                throw new ApiException("Only published courses can be force-unpublished.", 400);
+
+            course.Status = CourseStatus.Draft;
+            await _db.SaveChangesAsync();
+
+            return MapListItem(course);
+        }
+
         public async Task<PagedResult<CourseListItemDto>> GetPendingApprovalAsync(int page, int pageSize)
         {
             page = Math.Max(page, 1);
