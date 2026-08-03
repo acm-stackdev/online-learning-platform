@@ -47,6 +47,7 @@ try{
     builder.Services.AddScoped<CertificateService>();
     builder.Services.AddScoped<ProgressService>();
     builder.Services.AddScoped<MessagingService>();
+    builder.Services.AddScoped<InstructorApplicationService>();
 
     builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
     {
