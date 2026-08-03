@@ -587,5 +587,96 @@ namespace LearnHub.Tests.Services
             var ex = await act.Should().ThrowAsync<ApiException>();
             ex.Which.StatusCode.Should().Be(400);
         }
+
+        // ----- UpdateProfileAsync -----
+
+        [Fact]
+        public async Task UpdateProfileAsync_ValidInput_UpdatesUsernameAndAvatar()
+        {
+            var (db, sut, _, _) = CreateSut();
+            var user = SeedUser(db, "profile@student.com", "password123", isVerified: true);
+
+            var result = await sut.UpdateProfileAsync(user.Id, new UpdateProfileDto { Username = "NewName", AvatarUrl = "https://example.com/avatar.png" });
+
+            result.Username.Should().Be("NewName");
+            result.AvatarUrl.Should().Be("https://example.com/avatar.png");
+            (await db.Users.FindAsync(user.Id))!.Username.Should().Be("NewName");
+        }
+
+        [Fact]
+        public async Task UpdateProfileAsync_NullAvatarUrl_ClearsAvatar()
+        {
+            var (db, sut, _, _) = CreateSut();
+            var user = SeedUser(db, "clearavatar@student.com", "password123", isVerified: true);
+            user.AvatarUrl = "https://example.com/old.png";
+            await db.SaveChangesAsync();
+
+            var result = await sut.UpdateProfileAsync(user.Id, new UpdateProfileDto { Username = "SameName", AvatarUrl = null });
+
+            result.AvatarUrl.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task UpdateProfileAsync_UnknownUser_ThrowsApiException()
+        {
+            var (_, sut, _, _) = CreateSut();
+
+            var act = async () => await sut.UpdateProfileAsync(12345, new UpdateProfileDto { Username = "Ghost" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(404);
+        }
+
+        // ----- ChangePasswordAsync -----
+
+        [Fact]
+        public async Task ChangePasswordAsync_CorrectCurrentPassword_UpdatesPasswordAndAllowsLoginWithNewOne()
+        {
+            var (db, sut, _, _) = CreateSut();
+            var user = SeedUser(db, "changepw@student.com", "oldpassword123", isVerified: true);
+
+            await sut.ChangePasswordAsync(user.Id, new ChangePasswordDto { CurrentPassword = "oldpassword123", NewPassword = "newpassword456" });
+
+            var loginResult = await sut.LoginAsync(new LoginDto { Email = "changepw@student.com", Password = "newpassword456" });
+            loginResult.User.Id.Should().Be(user.Id);
+
+            var oldLoginAttempt = async () => await sut.LoginAsync(new LoginDto { Email = "changepw@student.com", Password = "oldpassword123" });
+            await oldLoginAttempt.Should().ThrowAsync<ApiException>();
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_WrongCurrentPassword_ThrowsApiException()
+        {
+            var (db, sut, _, _) = CreateSut();
+            var user = SeedUser(db, "wrongpw@student.com", "correctpassword", isVerified: true);
+
+            var act = async () => await sut.ChangePasswordAsync(user.Id, new ChangePasswordDto { CurrentPassword = "wrongpassword", NewPassword = "newpassword456" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(401);
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_GoogleOnlyAccount_ThrowsApiException()
+        {
+            var (db, sut, _, _) = CreateSut();
+            var user = SeedUser(db, "googleonly2@student.com", rawPassword: null, isVerified: true, googleId: "google-sub-456");
+
+            var act = async () => await sut.ChangePasswordAsync(user.Id, new ChangePasswordDto { CurrentPassword = "anything", NewPassword = "newpassword456" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_UnknownUser_ThrowsApiException()
+        {
+            var (_, sut, _, _) = CreateSut();
+
+            var act = async () => await sut.ChangePasswordAsync(12345, new ChangePasswordDto { CurrentPassword = "anything", NewPassword = "newpassword456" });
+
+            var ex = await act.Should().ThrowAsync<ApiException>();
+            ex.Which.StatusCode.Should().Be(404);
+        }
     }
 }

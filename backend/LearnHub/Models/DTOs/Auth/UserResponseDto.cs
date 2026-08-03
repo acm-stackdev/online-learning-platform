@@ -8,5 +8,6 @@ namespace LearnHub.Models.DTOs.Auth
         public string Username { get; set; }
         public string Email { get; set; }
         public Role Role { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 }

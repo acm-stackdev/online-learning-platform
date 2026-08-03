@@ -149,6 +149,36 @@ namespace LearnHub.Controllers
             return Ok(ToUserResponse(user));
         }
 
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile(UpdateProfileDto dto)
+        {
+            try
+            {
+                var user = await _authService.UpdateProfileAsync(User.GetUserId(), dto);
+                return Ok(ToUserResponse(user));
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+        {
+            try
+            {
+                await _authService.ChangePasswordAsync(User.GetUserId(), dto);
+                return Ok(new { message = "Password changed successfully." });
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, new { message = ex.Message });
+            }
+        }
+
         private void SetAuthCookies(string accessToken, string refreshToken)
         {
             var baseOptions = new CookieOptions
@@ -182,6 +212,7 @@ namespace LearnHub.Controllers
             Username = user.Username,
             Email = user.Email,
             Role = user.Role,
+            AvatarUrl = user.AvatarUrl,
         };
     }
 }

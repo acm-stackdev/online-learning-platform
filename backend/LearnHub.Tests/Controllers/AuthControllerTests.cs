@@ -425,5 +425,47 @@ namespace LearnHub.Tests.Controllers
 
             result.Should().BeOfType<UnauthorizedResult>();
         }
+
+        // ----- PUT /api/auth/me -----
+
+        [Fact]
+        public async Task UpdateProfile_ValidInput_Returns200WithUpdatedUser()
+        {
+            var (db, controller, _) = CreateSut();
+            var user = SeedUser(db, "updateprofile@student.com", "password123", isVerified: true);
+            controller.ControllerContext = ControllerTestHelpers.BuildControllerContext(ControllerTestHelpers.BuildUserPrincipal(user.Id));
+
+            var result = await controller.UpdateProfile(new UpdateProfileDto { Username = "NewName", AvatarUrl = "https://example.com/avatar.png" });
+
+            var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+            ok.Value.Should().BeOfType<UserResponseDto>().Which.Username.Should().Be("NewName");
+        }
+
+        // ----- POST /api/auth/change-password -----
+
+        [Fact]
+        public async Task ChangePassword_CorrectCurrentPassword_Returns200()
+        {
+            var (db, controller, _) = CreateSut();
+            var user = SeedUser(db, "changepw@student.com", "oldpassword123", isVerified: true);
+            controller.ControllerContext = ControllerTestHelpers.BuildControllerContext(ControllerTestHelpers.BuildUserPrincipal(user.Id));
+
+            var result = await controller.ChangePassword(new ChangePasswordDto { CurrentPassword = "oldpassword123", NewPassword = "newpassword456" });
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        [Fact]
+        public async Task ChangePassword_WrongCurrentPassword_Returns401()
+        {
+            var (db, controller, _) = CreateSut();
+            var user = SeedUser(db, "wrongpw@student.com", "correctpassword", isVerified: true);
+            controller.ControllerContext = ControllerTestHelpers.BuildControllerContext(ControllerTestHelpers.BuildUserPrincipal(user.Id));
+
+            var result = await controller.ChangePassword(new ChangePasswordDto { CurrentPassword = "wrongpassword", NewPassword = "newpassword456" });
+
+            var obj = result.Should().BeOfType<ObjectResult>().Subject;
+            obj.StatusCode.Should().Be(401);
+        }
     }
 }

@@ -220,6 +220,36 @@ namespace LearnHub.Services
             await _db.SaveChangesAsync();
         }
 
+        public async Task<User> UpdateProfileAsync(long userId, UpdateProfileDto dto)
+        {
+            var user = await _db.Users.FindAsync(userId);
+            if (user is null)
+                throw new ApiException("User not found.", 404);
+
+            user.Username = dto.Username;
+            user.AvatarUrl = dto.AvatarUrl;
+
+            await _db.SaveChangesAsync();
+            return user;
+        }
+
+        public async Task ChangePasswordAsync(long userId, ChangePasswordDto dto)
+        {
+            var user = await _db.Users.FindAsync(userId);
+            if (user is null)
+                throw new ApiException("User not found.", 404);
+
+            if (user.PasswordHash is null)
+                throw new ApiException("This account uses Google sign-in. Please continue with Google.", 400);
+
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.CurrentPassword);
+            if (result == PasswordVerificationResult.Failed)
+                throw new ApiException("Current password is incorrect.", 401);
+
+            user.PasswordHash = _passwordHasher.HashPassword(user, dto.NewPassword);
+            await _db.SaveChangesAsync();
+        }
+
         private async Task IssueVerificationTokenAsync(User user)
         {
             var rawToken = _jwtHelper.GenerateRefreshToken();
