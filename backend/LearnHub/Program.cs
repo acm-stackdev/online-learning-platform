@@ -49,6 +49,7 @@ try{
     builder.Services.AddScoped<MessagingService>();
     builder.Services.AddScoped<InstructorApplicationService>();
     builder.Services.AddScoped<AdminService>();
+    builder.Services.AddScoped<DashboardService>();
 
     builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
     {
