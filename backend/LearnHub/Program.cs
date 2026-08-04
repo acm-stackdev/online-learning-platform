@@ -3,8 +3,11 @@ using CloudinaryDotNet;
 using LearnHub.Data;
 using LearnHub.Helpers;
 using LearnHub.Hubs;
+using LearnHub.Middleware;
+using LearnHub.Models.Entities;
 using LearnHub.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -93,12 +96,10 @@ try{
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins(
-                    "http://localhost:5173"
-                )
+            policy.WithOrigins(builder.Configuration["Frontend:BaseUrl"]!)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials();  
+                .AllowCredentials();
         });
     });
 
@@ -110,10 +111,31 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (!await db.Users.AnyAsync(u => u.Role == Role.Admin))
+    {
+        var adminEmail = builder.Configuration["Admin:Email"] ?? "admin@learnhub.local";
+        var adminPassword = builder.Configuration["Admin:Password"] ?? "Admin123!";
+        var admin = new User
+        {
+            Username = "admin",
+            Email = adminEmail,
+            Role = Role.Admin,
+            IsEmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+        admin.PasswordHash = new PasswordHasher<User>().HashPassword(admin, adminPassword);
+        db.Users.Add(admin);
+        await db.SaveChangesAsync();
+        Log.Information("Seeded dev admin account: {Email} / {Password}", adminEmail, adminPassword);
+    }
 }
 
 app.UseSerilogRequestLogging();
 app.UseCors("AllowFrontend");
+app.UseMiddleware<CsrfGuardMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
