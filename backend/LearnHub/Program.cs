@@ -50,6 +50,12 @@ try{
     builder.Services.AddScoped<InstructorApplicationService>();
     builder.Services.AddScoped<AdminService>();
     builder.Services.AddScoped<DashboardService>();
+    builder.Services.AddHttpClient<IGeminiClient, GeminiClient>(client =>
+    {
+        client.BaseAddress = new Uri("https://generativelanguage.googleapis.com/");
+        client.DefaultRequestHeaders.Add("x-goog-api-key", builder.Configuration["Gemini:ApiKey"]);
+    });
+    builder.Services.AddScoped<ChatbotService>();
 
     builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
     {
