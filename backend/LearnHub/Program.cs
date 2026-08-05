@@ -32,6 +32,9 @@ try{
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres");
+
     builder.Services.AddSingleton(new Cloudinary(new Account(
         builder.Configuration["Cloudinary:CloudName"],
         builder.Configuration["Cloudinary:ApiKey"],
@@ -141,6 +144,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MessagingHub>("/hubs/messaging");
+app.MapHealthChecks("/health");
 
 
 app.Run();
