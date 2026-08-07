@@ -2,8 +2,6 @@
 
 A cloud-native online learning platform built for a Westminster University final-year project. Students browse and enrol in free courses, instructors create and manage course content, and admins govern the platform.
 
-> **Current status:** this repo is **backend-only** — there is no frontend yet. Everything below describes the ASP.NET Core API, tested directly via Swagger UI/Postman. A frontend is planned but not started.
-
 ---
 
 ## Tech Stack
@@ -22,6 +20,10 @@ A cloud-native online learning platform built for a Westminster University final
 | Logging | Serilog (console sink) |
 | Testing | xUnit + FluentAssertions + Moq, EF Core InMemory provider |
 | CI/CD | GitHub Actions (`.github/workflows/backend-ci.yml`) |
+| Frontend | Next.js 16 (App Router) + TypeScript |
+| Frontend styling | Tailwind CSS v4 + shadcn/ui |
+| Frontend forms | react-hook-form + zod |
+| Frontend Google sign-in | `@react-oauth/google` |
 
 ---
 
@@ -73,8 +75,24 @@ backend/
 │   └── Program.cs                  # DI registration, middleware pipeline
 └── LearnHub.Tests/                 # xUnit test project
 
+frontend/
+├── src/
+│   ├── app/                        # Next.js App Router routes
+│   │   ├── (auth)/                 # Route group: login, register, verify-email — no shared navbar/footer
+│   │   └── page.tsx                # Landing page
+│   ├── components/
+│   │   ├── ui/                     # shadcn/ui primitives
+│   │   ├── layout/                 # Navbar, Footer
+│   │   ├── landing/                # Landing page sections
+│   │   └── auth/                   # Auth forms and shared auth UI
+│   ├── lib/api/                    # Typed fetch wrappers per backend feature area
+│   └── types/                      # TypeScript types mirroring backend DTOs
+└── ...
+
 .github/workflows/backend-ci.yml    # CI: restore, build, test on every push/PR to main
 ```
+
+**Frontend status:** built so far — landing page (`/`), login/register/verify-email (`(auth)` route group). Remaining pages follow the same build order as the rest of the app: Public → Student → Instructor → Admin.
 
 ---
 
@@ -129,6 +147,17 @@ X-Requested-With: LearnHub
 
 (Postman: set this once as a collection-level default header. Swagger: add it per-request via the header field.)
 
+### 4. Run the frontend
+
+```bash
+cp frontend/.env.example frontend/.env.local
+cd frontend
+npm install
+npm run dev
+```
+
+Runs at `http://localhost:3000`. Needs the backend running too (`NEXT_PUBLIC_API_URL`, default `http://localhost:5073`). `NEXT_PUBLIC_GOOGLE_CLIENT_ID` should be the same value as the backend's `GOOGLE__CLIENTID` — that OAuth client's authorized JavaScript origins need `http://localhost:3000` added in Google Cloud Console for Google sign-in to work locally.
+
 ---
 
 ## Environment Variables
@@ -158,7 +187,7 @@ SMTP__PASSWORD=your_gmail_app_password
 SMTP__FROMEMAIL=your_gmail_address@gmail.com
 SMTP__FROMNAME=LearnHub
 
-FRONTEND__BASEURL=http://localhost:5173
+FRONTEND__BASEURL=http://localhost:3000
 ```
 
 **Neon connection string format:** Npgsql needs the classic `Key=Value;` ADO.NET format, not Neon's default `postgresql://user:pass@host/db?sslmode=require&channel_binding=require` URI — Npgsql doesn't parse that URI scheme or recognize `channel_binding`. Convert it to:
@@ -166,7 +195,7 @@ FRONTEND__BASEURL=http://localhost:5173
 Host=<neon-host>;Port=5432;Database=<db>;Username=<user>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true
 ```
 
-**`FRONTEND__BASEURL`** is also the CORS-allowed origin — set it to wherever the frontend actually runs (`http://localhost:5173` for local dev; the real deployed frontend URL in production).
+**`FRONTEND__BASEURL`** is also the CORS-allowed origin — set it to wherever the frontend actually runs (`http://localhost:3000` for local dev; the real deployed frontend URL in production).
 
 ---
 
