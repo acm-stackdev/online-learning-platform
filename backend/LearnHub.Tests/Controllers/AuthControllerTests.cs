@@ -34,7 +34,7 @@ namespace LearnHub.Tests.Controllers
             var envMock = new Mock<IWebHostEnvironment>();
             envMock.Setup(e => e.EnvironmentName).Returns(isDevelopment ? "Development" : "Production");
 
-            var controller = new AuthController(authService, db, envMock.Object)
+            var controller = new AuthController(authService, db, envMock.Object, config)
             {
                 ControllerContext = ControllerTestHelpers.BuildControllerContext(user, cookieHeader)
             };

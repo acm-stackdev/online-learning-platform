@@ -1,4 +1,5 @@
-import type { CourseListItem, PagedResult } from "@/types/course";
+import { serverApiFetch } from "@/lib/api/server";
+import type { CourseDetail, CourseListItem, PagedResult } from "@/types/course";
 
 export async function getFeaturedCourses(): Promise<CourseListItem[]> {
   try {
@@ -13,4 +14,25 @@ export async function getFeaturedCourses(): Promise<CourseListItem[]> {
   } catch {
     return [];
   }
+}
+
+export async function getCourses({
+  page = 1,
+  search,
+}: {
+  page?: number;
+  search?: string;
+}): Promise<PagedResult<CourseListItem>> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (search) params.set("search", search);
+
+  const result = await serverApiFetch<PagedResult<CourseListItem>>(
+    `/api/courses?${params.toString()}`
+  );
+
+  return result ?? { items: [], page, pageSize: 12, totalCount: 0 };
+}
+
+export function getCourseDetail(id: number) {
+  return serverApiFetch<CourseDetail>(`/api/courses/${id}`);
 }

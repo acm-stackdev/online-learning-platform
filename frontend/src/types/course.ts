@@ -25,3 +25,29 @@ export interface PagedResult<T> {
   pageSize: number;
   totalCount: number;
 }
+
+// Matches LearnHub.Models.Entities.ContentType.
+export enum ContentType {
+  Video = 0,
+  Pdf = 1,
+}
+
+export interface Lesson {
+  id: number;
+  title: string;
+  contentType: ContentType;
+  contentUrl: string | null;
+  duration: number;
+  order: number;
+}
+
+export interface Section {
+  id: number;
+  title: string;
+  order: number;
+  lessons: Lesson[];
+}
+
+export interface CourseDetail extends CourseListItem {
+  sections: Section[];
+}

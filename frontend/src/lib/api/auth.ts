@@ -52,3 +52,7 @@ export function resetPassword(token: string, newPassword: string) {
     body: JSON.stringify({ token, newPassword }),
   });
 }
+
+export function refreshSession() {
+  return apiFetch<void>("/api/auth/refresh", { method: "POST" });
+}

@@ -16,14 +16,16 @@ namespace LearnHub.Controllers
         private readonly AuthService _authService;
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly IConfiguration _config;
         private const string AccessCookie = "access_token";
         private const string RefreshCookie = "refresh_token";
 
-        public AuthController(AuthService authService, AppDbContext db, IWebHostEnvironment env)
+        public AuthController(AuthService authService, AppDbContext db, IWebHostEnvironment env, IConfiguration config)
         {
             _authService = authService;
             _db = db;
             _env = env;
+            _config = config;
         }
 
         [HttpPost("register")]
@@ -188,12 +190,14 @@ namespace LearnHub.Controllers
                 SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None,
             };
 
+            var accessTokenExpiryMinutes = int.Parse(_config["Jwt:ExpiryMinutes"] ?? "15");
+
             Response.Cookies.Append(AccessCookie, accessToken, new CookieOptions
             {
                 HttpOnly = baseOptions.HttpOnly,
                 Secure = baseOptions.Secure,
                 SameSite = baseOptions.SameSite,
-                Expires = DateTimeOffset.UtcNow.AddMinutes(15),
+                Expires = DateTimeOffset.UtcNow.AddMinutes(accessTokenExpiryMinutes),
             });
 
             Response.Cookies.Append(RefreshCookie, refreshToken, new CookieOptions

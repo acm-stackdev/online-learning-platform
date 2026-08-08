@@ -174,7 +174,7 @@ CLOUDINARY__APISECRET=your_api_secret
 JWT__SECRET=generate_a_random_32+_char_secret
 JWT__ISSUER=learnhub-api
 JWT__AUDIENCE=learnhub-client
-JWT__EXPIRYMINUTES=15
+JWT__EXPIRYMINUTES=60
 
 GOOGLE__CLIENTID=your_google_oauth_client_id
 
