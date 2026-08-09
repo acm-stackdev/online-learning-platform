@@ -134,6 +134,109 @@ if (app.Environment.IsDevelopment())
         await db.SaveChangesAsync();
         Log.Information("Seeded dev admin account: {Email} / {Password}", adminEmail, adminPassword);
     }
+
+    if (!await db.Courses.AnyAsync())
+    {
+        var hasher = new PasswordHasher<User>();
+
+        var instructor = new User
+        {
+            Username = "daniel_okafor",
+            Email = "daniel@learnhub.local",
+            Role = Role.Instructor,
+            IsEmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+        instructor.PasswordHash = hasher.HashPassword(instructor, "Instructor123!");
+
+        var student = new User
+        {
+            Username = "priya",
+            Email = "priya@learnhub.local",
+            Role = Role.Student,
+            IsEmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+        student.PasswordHash = hasher.HashPassword(student, "Student123!");
+
+        db.Users.AddRange(instructor, student);
+        await db.SaveChangesAsync();
+
+        const string sampleVideoUrl = "https://www.w3schools.com/html/mov_bbb.mp4";
+        const string samplePdfUrl = "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf";
+
+        var reactCourse = new Course
+        {
+            InstructorId = instructor.Id,
+            Title = "React patterns in practice",
+            Description = "Compound components, render props, and the patterns that keep large React apps maintainable.",
+            Category = "Development",
+            Status = CourseStatus.Published,
+            CreatedAt = DateTime.UtcNow,
+            Sections = new List<Section>
+            {
+                new()
+                {
+                    Title = "Modules and tooling",
+                    Order = 1,
+                    Lessons = new List<Lesson>
+                    {
+                        new() { Title = "Compound components", ContentType = ContentType.Video, ContentUrl = sampleVideoUrl, Duration = 750, Order = 1 },
+                        new() { Title = "Render props revisited", ContentType = ContentType.Video, ContentUrl = sampleVideoUrl, Duration = 495, Order = 2 },
+                    },
+                },
+                new()
+                {
+                    Title = "Testing components",
+                    Order = 2,
+                    Lessons = new List<Lesson>
+                    {
+                        new() { Title = "Unit tests in practice", ContentType = ContentType.Video, ContentUrl = sampleVideoUrl, Duration = 600, Order = 1 },
+                        new() { Title = "Testing glossary", ContentType = ContentType.Pdf, ContentUrl = samplePdfUrl, Duration = 300, Order = 2 },
+                    },
+                },
+            },
+        };
+
+        var jsCourse = new Course
+        {
+            InstructorId = instructor.Id,
+            Title = "Modern JavaScript from the ground up",
+            Description = "A complete path through the language as it's written today: syntax and scope, asynchronous patterns, modules, and the tooling around a real project.",
+            Category = "Development",
+            Status = CourseStatus.Published,
+            CreatedAt = DateTime.UtcNow,
+            Sections = new List<Section>
+            {
+                new()
+                {
+                    Title = "Getting started",
+                    Order = 1,
+                    Lessons = new List<Lesson>
+                    {
+                        new() { Title = "How this course works", ContentType = ContentType.Video, ContentUrl = sampleVideoUrl, Duration = 260, Order = 1 },
+                        new() { Title = "Setting up your environment", ContentType = ContentType.Pdf, ContentUrl = samplePdfUrl, Duration = 720, Order = 2 },
+                    },
+                },
+                new()
+                {
+                    Title = "Language fundamentals",
+                    Order = 2,
+                    Lessons = new List<Lesson>
+                    {
+                        new() { Title = "Variables and scope", ContentType = ContentType.Video, ContentUrl = sampleVideoUrl, Duration = 480, Order = 1 },
+                        new() { Title = "Functions in depth", ContentType = ContentType.Video, ContentUrl = sampleVideoUrl, Duration = 540, Order = 2 },
+                    },
+                },
+            },
+        };
+
+        db.Courses.AddRange(reactCourse, jsCourse);
+        await db.SaveChangesAsync();
+        Log.Information(
+            "Seeded demo instructor ({InstructorEmail} / Instructor123!), demo student ({StudentEmail} / Student123!), and 2 published courses",
+            instructor.Email, student.Email);
+    }
 }
 
 app.UseSerilogRequestLogging();

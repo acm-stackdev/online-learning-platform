@@ -3,18 +3,20 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-function buildHref(page: number, search?: string) {
+function buildHref(basePath: string, page: number, search?: string) {
   const params = new URLSearchParams({ page: String(page) });
   if (search) params.set("search", search);
-  return `/courses?${params.toString()}`;
+  return `${basePath}?${params.toString()}`;
 }
 
 export function Pagination({
+  basePath = "/courses",
   page,
   pageSize,
   totalCount,
   search,
 }: {
+  basePath?: string;
   page: number;
   pageSize: number;
   totalCount: number;
@@ -28,7 +30,7 @@ export function Pagination({
   return (
     <nav className="flex items-center justify-center gap-1">
       <Link
-        href={buildHref(Math.max(1, page - 1), search)}
+        href={buildHref(basePath, Math.max(1, page - 1), search)}
         aria-disabled={page <= 1}
         className={cn(
           buttonVariants({ variant: "outline", size: "icon-sm" }),
@@ -41,7 +43,7 @@ export function Pagination({
       {pages.map((p) => (
         <Link
           key={p}
-          href={buildHref(p, search)}
+          href={buildHref(basePath, p, search)}
           className={buttonVariants({
             variant: p === page ? "default" : "outline",
             size: "icon-sm",
@@ -52,7 +54,7 @@ export function Pagination({
       ))}
 
       <Link
-        href={buildHref(Math.min(totalPages, page + 1), search)}
+        href={buildHref(basePath, Math.min(totalPages, page + 1), search)}
         aria-disabled={page >= totalPages}
         className={cn(
           buttonVariants({ variant: "outline", size: "icon-sm" }),

@@ -1,0 +1,41 @@
+import { notFound, redirect } from "next/navigation";
+
+import { getCourseDetail } from "@/lib/api/courses";
+import { getMyEnrollments } from "@/lib/api/my-enrollments";
+import { getEnrollmentProgress } from "@/lib/api/progress";
+import { getCurrentUser } from "@/lib/api/me";
+
+export default async function LearnRedirectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const courseId = Number(id);
+
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const [course, enrollments] = await Promise.all([
+    getCourseDetail(courseId),
+    getMyEnrollments(),
+  ]);
+
+  if (!course) notFound();
+
+  const enrollment = enrollments.find((e) => e.course.id === courseId);
+  if (!enrollment) redirect(`/courses/${courseId}`);
+
+  const allLessons = course.sections.flatMap((s) => s.lessons);
+  if (allLessons.length === 0) redirect(`/courses/${courseId}`);
+
+  const progress = await getEnrollmentProgress(enrollment.id);
+  const completedIds = new Set(
+    (progress?.lessons ?? []).filter((l) => l.isCompleted).map((l) => l.lessonId)
+  );
+
+  const firstIncomplete = allLessons.find((l) => !completedIds.has(l.id));
+  const target = firstIncomplete ?? allLessons[0];
+
+  redirect(`/courses/${courseId}/learn/${target.id}`);
+}

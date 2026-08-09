@@ -3,15 +3,19 @@ import type { Metadata } from "next";
 
 import { StatTile } from "@/components/dashboard/StatTile";
 import { ContinueLearningCard } from "@/components/dashboard/ContinueLearningCard";
+import { CertificateCard } from "@/components/dashboard/CertificateCard";
 import { getCurrentUser } from "@/lib/api/me";
 import { getStudentDashboard } from "@/lib/api/dashboard";
 import { getEnrollmentProgress } from "@/lib/api/progress";
+import { getCertificate } from "@/lib/api/certificates";
+import type { Certificate } from "@/types/certificate";
 
 export const metadata: Metadata = {
   title: "Dashboard — LearnHub",
 };
 
 const MAX_CONTINUE_LEARNING = 4;
+const MAX_CERTIFICATES = 6;
 
 export default async function DashboardPage() {
   const [user, dashboard] = await Promise.all([
@@ -31,6 +35,15 @@ export default async function DashboardPage() {
       )
     )
   );
+
+  const completed = (dashboard?.enrollments ?? [])
+    .filter((e) => e.completedAt !== null)
+    .sort((a, b) => (a.completedAt! < b.completedAt! ? 1 : -1))
+    .slice(0, MAX_CERTIFICATES);
+
+  const certificates = (
+    await Promise.all(completed.map((e) => getCertificate(e.id)))
+  ).filter((c): c is Certificate => c !== null);
 
   const headline = inProgress[0]
     ? `You're ${Math.round(
@@ -78,6 +91,17 @@ export default async function DashboardPage() {
           </p>
         )}
       </div>
+
+      {certificates.length > 0 ? (
+        <div>
+          <h2 className="mb-4 text-lg font-semibold tracking-tight">Certificates</h2>
+          <div className="space-y-3">
+            {certificates.map((certificate) => (
+              <CertificateCard key={certificate.id} certificate={certificate} />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,18 +1,22 @@
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
 
-import { LogoutButton } from "@/components/layout/LogoutButton";
+import { UserMenu } from "@/components/layout/UserMenu";
+import { getConversations } from "@/lib/api/messaging";
 import { Role, type UserResponse } from "@/types/auth";
-import { initials } from "@/lib/utils";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/my-courses", label: "My courses" },
   { href: "/courses", label: "Browse" },
-  { href: "/messages", label: "Messages" },
 ];
 
-export function AppNavbar({ user }: { user: UserResponse }) {
+export async function AppNavbar({ user }: { user: UserResponse }) {
+  const totalUnread =
+    user.role !== Role.Admin
+      ? (await getConversations()).reduce((sum, c) => sum + c.unreadCount, 0)
+      : 0;
+
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -34,24 +38,31 @@ export function AppNavbar({ user }: { user: UserResponse }) {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/messages"
+              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              Messages
+              {totalUnread > 0 ? (
+                <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                  {totalUnread > 9 ? "9+" : totalUnread}
+                </span>
+              ) : null}
+            </Link>
             {user.role === Role.Instructor ? (
               <Link href="/instructor/dashboard" className="transition-colors hover:text-foreground">
                 Teach
               </Link>
             ) : null}
+            {user.role === Role.Admin ? (
+              <Link href="/admin" className="transition-colors hover:text-foreground">
+                Admin
+              </Link>
+            ) : null}
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
-          <LogoutButton />
-          <Link
-            href="/account"
-            className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground"
-            title={user.username}
-          >
-            {initials(user.username)}
-          </Link>
-        </div>
+        <UserMenu user={user} />
       </div>
     </header>
   );

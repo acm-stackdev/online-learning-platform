@@ -24,6 +24,8 @@ A cloud-native online learning platform built for a Westminster University final
 | Frontend styling | Tailwind CSS v4 + shadcn/ui |
 | Frontend forms | react-hook-form + zod |
 | Frontend Google sign-in | `@react-oauth/google` |
+| Frontend real-time | `@microsoft/signalr` |
+| Frontend media upload | Direct browser → Cloudinary (unsigned preset), same convention as the backend |
 
 ---
 
@@ -77,22 +79,43 @@ backend/
 
 frontend/
 ├── src/
-│   ├── app/                        # Next.js App Router routes
-│   │   ├── (auth)/                 # Route group: login, register, verify-email — no shared navbar/footer
-│   │   └── page.tsx                # Landing page
+│   ├── app/                        # Next.js App Router routes, split into route groups by chrome/auth level
+│   │   ├── (public)/                # No auth required — landing, course catalogue, course detail
+│   │   ├── (auth)/                  # Login/register/forgot-password/reset-password/verify-email — no navbar
+│   │   ├── (app)/                   # Authenticated shell (AppNavbar + session auto-refresh) — dashboard,
+│   │   │                            #   my-courses, account, messages, become-instructor, instructor/*, admin/*
+│   │   ├── (learn)/                 # The lesson player — its own minimal chrome, not the full app navbar
+│   │   ├── @modal/                  # Parallel route: login/register render as a shadcn Dialog when linked to
+│   │   │                            #   from anywhere in the app, and as full pages on direct visit/refresh
+│   │   │                            #   (Next.js "intercepting routes")
+│   │   └── proxy.ts                 # Auth guard for protected routes — checks the session, silently
+│   │                                #   refreshes an expired-but-still-valid one before redirecting to /login
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui primitives
-│   │   ├── layout/                 # Navbar, Footer
+│   │   ├── layout/                 # PublicNavbar, AppNavbar, UserMenu, Footer
 │   │   ├── landing/                # Landing page sections
-│   │   └── auth/                   # Auth forms and shared auth UI
-│   ├── lib/api/                    # Typed fetch wrappers per backend feature area
+│   │   ├── auth/                   # Auth forms, Google sign-in, session-expiry refresher
+│   │   ├── courses/                # Catalogue search/pagination, curriculum display
+│   │   ├── learn/                  # Lesson player, curriculum rail
+│   │   ├── dashboard/               # Stat tiles, continue-learning/certificate cards
+│   │   ├── messaging/               # Conversation list, chat thread (SignalR-backed)
+│   │   ├── instructor/              # Course builder (details + curriculum editor), lesson upload dialog
+│   │   ├── admin/                   # Review-queue rows, user management row
+│   │   └── shared/                  # Cross-feature pieces (e.g. the Cloudinary ImageUpload widget)
+│   ├── lib/
+│   │   ├── api/                    # Typed fetch wrappers per backend feature area (server- vs client-only
+│   │   │                           #   split deliberately maintained — see note below)
+│   │   ├── signalr/                 # SignalR connection hook for messaging
+│   │   └── cloudinary.ts            # Direct-to-Cloudinary upload helper (unsigned preset)
 │   └── types/                      # TypeScript types mirroring backend DTOs
 └── ...
 
 .github/workflows/backend-ci.yml    # CI: restore, build, test on every push/PR to main
 ```
 
-**Frontend status:** built so far — landing page (`/`), login/register/verify-email (`(auth)` route group). Remaining pages follow the same build order as the rest of the app: Public → Student → Instructor → Admin.
+**Frontend status:** feature-complete across all four tiers — Public (landing, catalogue, course detail), Student (dashboard, my courses, lesson player with progress tracking, certificates, account settings, messaging, instructor application), Instructor (dashboard, course builder with curriculum + file upload, roster), and Admin (overview stats, course review queue, instructor application review, user management).
+
+**`lib/api/` server/client split**, worth knowing before adding to it: functions using `serverApiFetch` (forwards cookies via `next/headers`, Server-Component-only) and functions using `apiFetch` (plain `fetch`, client-safe) are kept in **separate files** even when they cover the same feature area (e.g. `messaging.ts` vs a client-side messages helper, `my-enrollments.ts` vs `enrollments.ts`). Mixing them in one file risks a hard Next.js build error if that file is ever imported from a `"use client"` component.
 
 ---
 
@@ -157,6 +180,19 @@ npm run dev
 ```
 
 Runs at `http://localhost:3000`. Needs the backend running too (`NEXT_PUBLIC_API_URL`, default `http://localhost:5073`). `NEXT_PUBLIC_GOOGLE_CLIENT_ID` should be the same value as the backend's `GOOGLE__CLIENTID` — that OAuth client's authorized JavaScript origins need `http://localhost:3000` added in Google Cloud Console for Google sign-in to work locally.
+
+Avatar and course-thumbnail uploads (`/account`, the course builder) go straight from the browser to Cloudinary using an **unsigned upload preset** — the API secret never touches the frontend. Set `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (same as the backend's `CLOUDINARY__CLOUDNAME`) and `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` to a preset you've created for your Cloudinary account (Console → Settings → Upload → Upload presets → Add upload preset, mode **Unsigned**). Without this, those two upload buttons will fail — everything else in the app works fine regardless.
+
+### 5. Dev-only demo course data
+
+Alongside the admin seed, if no courses exist yet, two published demo courses (with real playable sample video/PDF lessons) are seeded automatically, along with a demo Instructor and Student account so the whole enrol → learn → certificate loop can be tried immediately without registering or building a course by hand:
+
+```
+Instructor: daniel@learnhub.local / Instructor123!
+Student:    priya@learnhub.local  / Student123!
+```
+
+Same `Development`-only, seed-if-empty pattern as the admin account (`Program.cs`).
 
 ---
 
@@ -346,7 +382,7 @@ dotnet test LearnHub.sln
 
 ## Deployment
 
-Not yet deployed. Queued work: a `/health` endpoint (DB-connectivity check against Neon), a `Dockerfile`, a Render service, and an UptimeRobot monitor. None of this exists in the repo yet.
+Not yet deployed. `GET /health` (real DB-connectivity check against Neon via `AspNetCore.HealthChecks.NpgSql`, `app.MapHealthChecks("/health")` in `Program.cs`) is already implemented and manually verified against the live database — it just isn't wired into any hosting yet. Still queued: a `Dockerfile`, a Render service, and an UptimeRobot monitor pointed at `/health`.
 
 ---
 

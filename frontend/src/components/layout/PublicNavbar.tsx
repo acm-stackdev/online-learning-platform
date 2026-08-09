@@ -2,9 +2,8 @@ import Link from "next/link";
 import { GraduationCap } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import { LogoutButton } from "@/components/layout/LogoutButton";
+import { UserMenu } from "@/components/layout/UserMenu";
 import { getCurrentUser } from "@/lib/api/me";
-import { initials } from "@/lib/utils";
 
 const navLinks = [
   { href: "/courses", label: "Courses" },
@@ -40,20 +39,10 @@ export async function PublicNavbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <LogoutButton />
-              <Link
-                href="/dashboard"
-                className={buttonVariants({ size: "sm" })}
-              >
+              <Link href="/dashboard" className={buttonVariants({ size: "sm" })}>
                 Dashboard
               </Link>
-              <Link
-                href="/account"
-                className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground"
-                title={user.username}
-              >
-                {initials(user.username)}
-              </Link>
+              <UserMenu user={user} />
             </>
           ) : (
             <>

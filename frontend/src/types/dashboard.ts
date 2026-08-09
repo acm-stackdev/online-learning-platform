@@ -22,3 +22,13 @@ export interface StudentDashboard {
   instructorApplicationStatus: ApplicationStatus | null;
   enrollments: Enrollment[];
 }
+
+export interface InstructorDashboard {
+  totalCourses: number;
+  draftCourseCount: number;
+  pendingApprovalCourseCount: number;
+  publishedCourseCount: number;
+  rejectedCourseCount: number;
+  totalStudentsEnrolled: number;
+  courses: CourseListItem[];
+}

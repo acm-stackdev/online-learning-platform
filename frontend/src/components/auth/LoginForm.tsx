@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import { hardNavigate } from "@/lib/hard-navigate";
 import { isUserResponse } from "@/types/auth";
 
 const loginSchema = z.object({
@@ -23,7 +23,6 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
 
@@ -39,7 +38,7 @@ export function LoginForm() {
     setFormError(null);
     try {
       await login(values);
-      router.push("/dashboard");
+      hardNavigate("/dashboard");
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Something went wrong.");
     }
@@ -98,7 +97,7 @@ export function LoginForm() {
         onSuccess={(result) => {
           setFormError(null);
           if (isUserResponse(result)) {
-            router.push("/dashboard");
+            hardNavigate("/dashboard");
           } else {
             setCheckEmail(true);
           }

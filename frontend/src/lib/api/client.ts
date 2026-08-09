@@ -36,7 +36,10 @@ export async function apiFetch<T>(
   if (method !== "GET") {
     headers.set("X-Requested-With", "LearnHub");
   }
-  if (options.body) {
+  // For FormData bodies (multipart file uploads), leave Content-Type unset —
+  // the browser fills in the correct boundary automatically. Setting it
+  // manually would drop the boundary and break the upload.
+  if (options.body && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
