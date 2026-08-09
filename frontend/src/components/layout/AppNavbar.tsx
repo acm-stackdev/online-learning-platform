@@ -1,9 +1,17 @@
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Menu } from "lucide-react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { buttonVariants } from "@/components/ui/button";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getConversations } from "@/lib/api/messaging";
+import { cn } from "@/lib/utils";
 import { Role, type UserResponse } from "@/types/auth";
 
 const studentInstructorLinks = [
@@ -71,6 +79,41 @@ export async function AppNavbar({ user }: { user: UserResponse }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
+              aria-label="Menu"
+            >
+              <Menu className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {navLinks.map((link) => (
+                <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
+                  {link.label}
+                </DropdownMenuItem>
+              ))}
+              {!isAdmin ? (
+                <DropdownMenuItem render={<Link href="/messages" />}>
+                  <span className="flex flex-1 items-center gap-1.5">
+                    Messages
+                    {totalUnread > 0 ? (
+                      <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                        {totalUnread > 9 ? "9+" : totalUnread}
+                      </span>
+                    ) : null}
+                  </span>
+                </DropdownMenuItem>
+              ) : null}
+              {user.role === Role.Instructor ? (
+                <DropdownMenuItem render={<Link href="/instructor/dashboard" />}>
+                  Teach
+                </DropdownMenuItem>
+              ) : null}
+              {isAdmin ? (
+                <DropdownMenuItem render={<Link href="/admin" />}>Admin</DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <ThemeToggle />
           <UserMenu user={user} />
         </div>

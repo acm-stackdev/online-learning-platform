@@ -120,12 +120,27 @@ namespace LearnHub.Tests.Services
         }
 
         [Fact]
-        public async Task AskAsync_NotEnrolledStudent_ThrowsApiException()
+        public async Task AskAsync_NotEnrolledStudent_PublishedCourse_ReturnsReply()
         {
             var (db, sut, _) = CreateSut();
             var instructor = SeedUser(db, "instructor@learnhub.com", Role.Instructor);
             var student = SeedUser(db, "student@learnhub.com");
             var course = SeedCourse(db, instructor.Id);
+
+            var result = await sut.AskAsync(course.Id, student.Id, isAdmin: false, new ChatRequestDto { Message = "Hi" });
+
+            result.Reply.Should().Be("Mocked tutor reply.");
+        }
+
+        [Fact]
+        public async Task AskAsync_NotOwnerNotAdmin_DraftCourse_ThrowsApiException()
+        {
+            var (db, sut, _) = CreateSut();
+            var instructor = SeedUser(db, "instructor@learnhub.com", Role.Instructor);
+            var student = SeedUser(db, "student@learnhub.com");
+            var course = SeedCourse(db, instructor.Id);
+            course.Status = CourseStatus.Draft;
+            db.SaveChanges();
 
             var act = async () => await sut.AskAsync(course.Id, student.Id, isAdmin: false, new ChatRequestDto { Message = "Hi" });
 

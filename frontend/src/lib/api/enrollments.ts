@@ -6,3 +6,7 @@ export function enrol(courseId: number) {
     body: JSON.stringify({ courseId }),
   });
 }
+
+export function unenrol(enrollmentId: number) {
+  return apiFetch<void>(`/api/enrollments/${enrollmentId}`, { method: "DELETE" });
+}

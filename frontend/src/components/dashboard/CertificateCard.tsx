@@ -2,6 +2,7 @@ import { Award, Download } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { UnenrolButton } from "@/components/dashboard/UnenrolButton";
 import type { Certificate } from "@/types/certificate";
 
 export function CertificateCard({ certificate }: { certificate: Certificate }) {
@@ -18,15 +19,22 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
         </p>
       </div>
 
-      <a
-        href={certificate.certificateUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={buttonVariants({ variant: "outline", size: "sm" })}
-      >
-        <Download className="size-4" />
-        Download
-      </a>
+      <div className="flex shrink-0 items-center gap-1">
+        <UnenrolButton
+          enrollmentId={certificate.enrollmentId}
+          courseTitle={certificate.courseTitle}
+          hasCertificate
+        />
+        <a
+          href={certificate.certificateUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <Download className="size-4" />
+          Download
+        </a>
+      </div>
     </Card>
   );
 }

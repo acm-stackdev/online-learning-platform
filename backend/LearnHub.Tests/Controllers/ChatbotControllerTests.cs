@@ -88,12 +88,28 @@ namespace LearnHub.Tests.Controllers
         }
 
         [Fact]
-        public async Task Ask_NotEnrolledStudent_Returns403()
+        public async Task Ask_NotEnrolledStudent_PublishedCourse_ReturnsOk()
         {
             var (db, controller) = CreateSut(1, "Student");
             var owner = SeedUser(db, "instructor@learnhub.com", Role.Instructor);
             var student = SeedUser(db, "student@learnhub.com");
             var course = SeedCourse(db, owner.Id);
+            controller.ControllerContext = ControllerTestHelpers.BuildControllerContext(ControllerTestHelpers.BuildUserPrincipal(student.Id, role: "Student"));
+
+            var result = await controller.Ask(course.Id, new ChatRequestDto { Message = "Hi" });
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        [Fact]
+        public async Task Ask_NotOwnerNotAdmin_DraftCourse_Returns403()
+        {
+            var (db, controller) = CreateSut(1, "Student");
+            var owner = SeedUser(db, "instructor@learnhub.com", Role.Instructor);
+            var student = SeedUser(db, "student@learnhub.com");
+            var course = SeedCourse(db, owner.Id);
+            course.Status = CourseStatus.Draft;
+            db.SaveChanges();
             controller.ControllerContext = ControllerTestHelpers.BuildControllerContext(ControllerTestHelpers.BuildUserPrincipal(student.Id, role: "Student"));
 
             var result = await controller.Ask(course.Id, new ChatRequestDto { Message = "Hi" });

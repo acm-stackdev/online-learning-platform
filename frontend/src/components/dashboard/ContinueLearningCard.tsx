@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { UnenrolButton } from "@/components/dashboard/UnenrolButton";
 import type { Enrollment } from "@/types/dashboard";
 import type { EnrollmentProgress } from "@/types/progress";
 
@@ -35,12 +36,15 @@ export function ContinueLearningCard({
 
       <div className="shrink-0 space-y-1 text-right">
         <p className="text-sm text-muted-foreground">{Math.round(percent)}%</p>
-        <Link
-          href={`/courses/${enrollment.course.id}/learn`}
-          className={buttonVariants({ size: "sm" })}
-        >
-          {started ? "Resume" : "Start"}
-        </Link>
+        <div className="flex items-center gap-1">
+          <UnenrolButton enrollmentId={enrollment.id} courseTitle={enrollment.course.title} />
+          <Link
+            href={`/courses/${enrollment.course.id}/learn`}
+            className={buttonVariants({ size: "sm" })}
+          >
+            {started ? "Resume" : "Start"}
+          </Link>
+        </div>
       </div>
     </Card>
   );

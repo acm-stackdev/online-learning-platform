@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { CurriculumSection } from "@/components/courses/CurriculumSection";
 import { EnrolButton } from "@/components/courses/EnrolButton";
+import { CourseTutorWidget } from "@/components/chatbot/CourseTutorWidget";
 import { getCourseDetail } from "@/lib/api/courses";
 import { getCurrentUser } from "@/lib/api/me";
 import { formatDuration } from "@/lib/utils";
@@ -149,6 +150,8 @@ export default async function CourseDetailPage({
           </ul>
         </div>
       </div>
+
+      <CourseTutorWidget courseId={course.id} courseTitle={course.title} isLoggedIn={!!user} />
     </div>
   );
 }

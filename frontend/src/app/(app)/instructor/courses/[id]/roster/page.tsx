@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
+import { RosterActions } from "@/components/instructor/RosterActions";
 import { getCourseDetail } from "@/lib/api/courses";
 import { getCourseRoster } from "@/lib/api/roster";
 import { getCurrentUser } from "@/lib/api/me";
@@ -55,6 +56,7 @@ export default async function RosterPage({
                 <th className="px-4 py-2 font-medium">Email</th>
                 <th className="px-4 py-2 font-medium">Enrolled</th>
                 <th className="px-4 py-2 font-medium">Completed</th>
+                <th className="px-4 py-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -69,6 +71,12 @@ export default async function RosterPage({
                     {item.completedAt
                       ? new Date(item.completedAt).toLocaleDateString()
                       : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <RosterActions
+                      enrollmentId={item.enrollmentId}
+                      studentUsername={item.studentUsername}
+                    />
                   </td>
                 </tr>
               ))}

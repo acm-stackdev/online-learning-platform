@@ -34,6 +34,10 @@ export function unpublishCourse(courseId: number) {
   });
 }
 
+export function deleteCourse(courseId: number) {
+  return apiFetch<void>(`/api/courses/${courseId}`, { method: "DELETE" });
+}
+
 export function createSection(courseId: number, title: string) {
   return apiFetch<Section>("/api/sections", {
     method: "POST",

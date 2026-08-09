@@ -13,7 +13,7 @@ A cloud-native online learning platform built for a Westminster University final
 | ORM | Entity Framework Core 8 + Npgsql |
 | Auth | JWT in `httpOnly` cookies + Google OAuth 2.0 |
 | Real-time | SignalR (messaging, presence) |
-| AI | Google Gemini API (`gemini-2.5-flash`) — course tutor chatbot |
+| AI | Google Gemini API (`gemini-flash-latest`) — course tutor chatbot |
 | Media | Cloudinary |
 | PDF | PdfSharpCore (certificate generation from a template) |
 | Email | MailKit/SMTP (verification, password reset) |
@@ -27,6 +27,7 @@ A cloud-native online learning platform built for a Westminster University final
 | Frontend real-time | `@microsoft/signalr` |
 | Frontend media upload | Direct browser → Cloudinary (unsigned preset), same convention as the backend |
 | Frontend theming | `next-themes` — system-aware dark/light mode toggle |
+| Frontend testing | Vitest + React Testing Library |
 
 ---
 
@@ -45,16 +46,16 @@ Registration only ever accepts `Student` or `Instructor` — `Role` is validated
 ## Features Implemented
 
 - **Auth** — email/password registration with verification email, Google OAuth login, JWT access/refresh token rotation via `httpOnly` cookies, forgot/reset password, self-service profile update (username/avatar URL) and password change.
-- **Courses** — catalogue with search/filter, CRUD (Instructor-owned), submit-for-review → Admin approve/reject workflow, unpublish (self) and force-unpublish (Admin, with a dedicated "Published courses" admin tab to find and act on any live course). Category is picked from a small set of presets (Development/Design/Business/Marketing) or a free-text "Custom..." option.
+- **Courses** — catalogue with search/filter, CRUD (Instructor-owned, including delete — only available once a course is unpublished, matching the backend's own rule), submit-for-review → Admin approve/reject workflow, unpublish (self) and force-unpublish (Admin, with a dedicated "Published courses" admin tab to find and act on any live course). Category is picked from a small set of presets (Development/Design/Business/Marketing) or a free-text "Custom..." option.
 - **Sections & Lessons** — CRUD with reordering; lesson video/document content is uploaded **through the API** as `multipart/form-data` (up to 500MB) and pushed to Cloudinary server-side. This is different from avatars and course thumbnails, which are plain URL strings — the client uploads those directly to Cloudinary itself and only sends the resulting URL to the API.
-- **Enrollment & progress tracking** — free enrolment, per-lesson completion tracking, course-completion detection.
+- **Enrollment & progress tracking** — free enrolment, per-lesson completion tracking, course-completion detection, and unenrolling (self-service from "My courses", or removal by the owning Instructor from the course roster / an Admin) — the confirmation dialog is explicit that this also deletes the student's progress, certificate (if issued), and message history for that course, since those cascade-delete with the enrolment.
 - **Course preview for Admin/owner** — the course detail page and lesson player distinguish three viewer states returned by the API (`isEnrolled`/`isOwner`, plus the client's own `isAdmin` check): an enrolled Student sees the normal "Continue" experience with progress tracking, the owning Instructor sees an "Edit course" shortcut instead, and an Admin gets a clearly-labelled read-only preview of the actual video/PDF content (for moderation) with no enrolment, progress tracking, or certificate implied.
 - **Certificates** — PDF certificate auto-issued on course completion (PdfSharpCore + a template asset).
 - **Messaging** — real-time, SignalR-based, scoped per enrolment; live presence status (Online/Busy/Offline).
 - **Instructor application workflow** — a Student can apply to become an Instructor; an Admin approves or rejects. If an Admin later reverts a promoted user back to Student via the Users tab, the become-instructor page correctly shows "instructor access removed" rather than a stale "approved" message, and lets them re-apply.
 - **Admin panel** — user management, role changes, suspend/reinstate, course review (approve/reject) plus a separate published-courses view for force-unpublishing a live course, platform stats.
 - **Dashboards** — a consolidated "my stuff" endpoint for Students, and a separate one for Instructors (courses they own).
-- **AI course tutor chatbot** — Gemini-backed, per-course, stateless (the client resends recent conversation turns each request; nothing is persisted server-side). Scoped to the course's owner, an Admin, or an enrolled student — the same access rule that already gates lesson content.
+- **AI course tutor chatbot** — Gemini-backed, per-course, stateless (the client resends recent conversation turns each request; nothing is persisted server-side), rendered as a floating widget on both the course detail page and the lesson player, with markdown-formatted replies. Any logged-in user can ask about a **published** course — not just the owner, Admin, or already-enrolled students — so it also works as a pre-enrollment "ask about this course" helper; Draft/PendingApproval/Rejected courses stay restricted to their owner and Admin.
 - **CSRF protection** — CORS locked to a single configurable frontend origin, plus a custom-header guard middleware on cookie-authenticated mutating requests.
 - **Theming** — system-aware dark/light mode toggle in both navbars (`next-themes`).
 
@@ -106,6 +107,7 @@ frontend/
 │   │   ├── messaging/               # Conversation list, chat thread (SignalR-backed)
 │   │   ├── instructor/              # Course builder (details + curriculum editor), lesson upload dialog
 │   │   ├── admin/                   # Review-queue rows, user management row
+│   │   ├── chatbot/                  # Floating AI course-tutor widget (course detail + lesson player)
 │   │   └── shared/                  # Cross-feature pieces (e.g. the Cloudinary ImageUpload widget)
 │   ├── lib/
 │   │   ├── api/                    # Typed fetch wrappers per backend feature area (server- vs client-only
@@ -273,7 +275,7 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 | PUT | `{id}/force-unpublish` | Admin | Force-unpublish any course |
 | POST | `{id}/approve` | Admin | Approve a pending course |
 | POST | `{id}/reject` | Admin | Reject a pending course |
-| POST | `{id}/chat` | Authenticated (owner/enrolled/admin) | Ask the AI course tutor |
+| POST | `{id}/chat` | Authenticated (any role; owner/Admin also allowed on unpublished courses) | Ask the AI course tutor |
 
 ### Sections (`/api/sections`) — Instructor-only
 | Method | Route | Description |
@@ -304,7 +306,7 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 ### Certificates (`/api/certificates`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| GET | `{enrollmentId}` | Owner or Admin | Download completion certificate PDF |
+| GET | `{enrollmentId}` | Owner or Admin | Certificate metadata (`certificateUrl` pointing at the Cloudinary-hosted PDF, generated once at completion time) |
 
 ### Messaging (`/api/messaging`)
 | Method | Route | Description |
@@ -360,13 +362,27 @@ Tooling:
 - **FluentAssertions** — makes assertions easier to read.
 - **EF Core's InMemory provider** — a fake database, so tests run instantly with no external dependency.
 
-As of the latest count, 219 tests cover expected successful behavior and expected failure behavior alike (wrong password, duplicate email, expired tokens, unauthorized access, and so on).
+As of the latest count, 284 tests cover expected successful behavior and expected failure behavior alike (wrong password, duplicate email, expired tokens, unauthorized access, and so on).
 
 ### A real bug found during testing
 
 While writing a test for the logout endpoint, the tests revealed an actual bug, not just a hypothetical one. On login, the server stores a "refresh token" cookie scoped to the path `/api/auth`. On logout, the code meant to delete that cookie was accidentally targeting a different path, `/api/auth/refresh`. Browsers only delete a cookie when the path matches exactly, so logging out did not actually remove the cookie from the browser.
 
 This was confirmed independently by simulating a real browser's cookie storage (via .NET's `CookieContainer`, which follows the same cookie rules browsers use) and checking whether the cookie survived logout — it did, proving the bug. The fix was a one-line change to make both paths match. A good example of unit testing catching a real, user-facing issue that wasn't obvious from reading the code casually.
+
+### Frontend tests
+
+`frontend/` has its own test setup — **Vitest** + **React Testing Library**, `jsdom` environment. Tests are colocated next to the file they cover (e.g. `src/lib/utils.test.ts` next to `src/lib/utils.ts`) and use explicit `import { describe, it, expect } from "vitest"` rather than Vitest's implicit globals, so no ESLint config changes were needed.
+
+Started narrow, the same way the backend suite did — one pure-logic module (`apiFetch`/`ApiError` in `lib/api/client.ts`, the shared fetch wrapper nearly every feature goes through), the small utility helpers (`cn`/`initials`/`formatDuration`), and two representative components (`CurriculumSection` for prop-driven UI with zero external dependencies, `EnrolButton` for conditional rendering plus an async success/error interaction with mocked `next/navigation` and a mocked API call) — rather than an attempt at full coverage in one pass.
+
+```bash
+cd frontend
+npm test          # one-shot run
+npm run test:watch
+```
+
+Not yet wired into GitHub Actions — only the backend has a CI workflow so far (see below).
 
 ### CI/CD with GitHub Actions
 

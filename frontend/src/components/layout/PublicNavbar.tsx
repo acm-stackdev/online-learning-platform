@@ -1,10 +1,17 @@
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Menu } from "lucide-react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUser } from "@/lib/api/me";
+import { cn } from "@/lib/utils";
 import { Role } from "@/types/auth";
 
 const baseNavLinks = [{ href: "/courses", label: "Courses" }];
@@ -40,6 +47,21 @@ export async function PublicNavbar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
+              aria-label="Menu"
+            >
+              <Menu className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {navLinks.map((link) => (
+                <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
+                  {link.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <ThemeToggle />
           {user ? (
             <>

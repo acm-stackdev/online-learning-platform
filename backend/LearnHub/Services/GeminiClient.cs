@@ -10,7 +10,10 @@ namespace LearnHub.Services
 
     public class GeminiClient : IGeminiClient
     {
-        private const string Model = "gemini-2.5-flash";
+        // "gemini-2.5-flash" was deprecated for newer API keys ("no longer available to
+        // new users") — "gemini-flash-latest" is Google's stable rolling alias for the
+        // current recommended flash model, so this won't go stale the same way again.
+        private const string Model = "gemini-flash-latest";
         private readonly HttpClient _httpClient;
 
         public GeminiClient(HttpClient httpClient)

@@ -4,8 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CourseStatusBadge } from "@/components/instructor/CourseStatusBadge";
-import { submitForReview, unpublishCourse } from "@/lib/api/course-builder";
+import { deleteCourse, submitForReview, unpublishCourse } from "@/lib/api/course-builder";
 import { ApiError } from "@/lib/api/client";
 import { CourseStatus } from "@/types/course";
 
@@ -19,6 +29,7 @@ export function PublishPanel({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   async function handleSubmit() {
     setLoading(true);
@@ -46,6 +57,18 @@ export function PublishPanel({
     }
   }
 
+  async function handleDelete() {
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteCourse(courseId);
+      router.push("/instructor/dashboard");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border p-4">
       <CourseStatusBadge status={status} />
@@ -65,6 +88,34 @@ export function PublishPanel({
           {loading ? "Unpublishing..." : "Unpublish"}
         </Button>
       ) : null}
+
+      {status !== CourseStatus.Published ? (
+        <Button
+          variant="destructive"
+          disabled={loading}
+          onClick={() => setConfirmDeleteOpen(true)}
+        >
+          Delete course
+        </Button>
+      ) : null}
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this course?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes the course along with all its sections and lessons. This can&apos;t
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={loading} onClick={handleDelete}>
+              {loading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { CurriculumRail } from "@/components/learn/CurriculumRail";
 import { LessonView } from "@/components/learn/LessonView";
+import { CourseTutorWidget } from "@/components/chatbot/CourseTutorWidget";
 import { getCourseDetail } from "@/lib/api/courses";
 import { getMyEnrollments } from "@/lib/api/my-enrollments";
 import { getEnrollmentProgress } from "@/lib/api/progress";
@@ -87,6 +88,8 @@ export default async function LessonPage({
           </div>
         ) : null}
       </div>
+
+      <CourseTutorWidget courseId={courseId} courseTitle={course.title} isLoggedIn />
     </div>
   );
 }
