@@ -97,6 +97,8 @@ namespace LearnHub.Services
                 InstructorId = course.InstructorId,
                 InstructorName = course.Instructor.Username,
                 CreatedAt = course.CreatedAt,
+                IsEnrolled = isEnrolled,
+                IsOwner = isOwner,
                 Sections = course.Sections
                     .OrderBy(s => s.Order)
                     .Select(s => new SectionSummaryDto

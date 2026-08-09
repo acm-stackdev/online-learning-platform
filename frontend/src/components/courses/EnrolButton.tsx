@@ -11,23 +11,49 @@ import { ApiError } from "@/lib/api/client";
 export function EnrolButton({
   courseId,
   isLoggedIn,
-  hasAccess,
+  isEnrolled,
+  isOwner,
+  isAdmin,
 }: {
   courseId: number;
   isLoggedIn: boolean;
-  hasAccess: boolean;
+  isEnrolled: boolean;
+  isOwner: boolean;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (hasAccess) {
+  if (isEnrolled) {
     return (
       <Link
         href={`/courses/${courseId}/learn`}
         className={buttonVariants({ className: "w-full" })}
       >
         Continue
+      </Link>
+    );
+  }
+
+  if (isOwner) {
+    return (
+      <Link
+        href={`/instructor/courses/${courseId}/edit`}
+        className={buttonVariants({ variant: "outline", className: "w-full" })}
+      >
+        Edit course
+      </Link>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <Link
+        href={`/courses/${courseId}/learn`}
+        className={buttonVariants({ variant: "outline", className: "w-full" })}
+      >
+        Preview content
       </Link>
     );
   }

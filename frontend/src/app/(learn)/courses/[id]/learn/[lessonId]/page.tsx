@@ -7,6 +7,7 @@ import { getCourseDetail } from "@/lib/api/courses";
 import { getMyEnrollments } from "@/lib/api/my-enrollments";
 import { getEnrollmentProgress } from "@/lib/api/progress";
 import { getCurrentUser } from "@/lib/api/me";
+import { Role } from "@/types/auth";
 
 export async function generateMetadata({
   params,
@@ -29,16 +30,10 @@ export default async function LessonPage({
 
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const isAdmin = user.role === Role.Admin;
 
-  const [course, enrollments] = await Promise.all([
-    getCourseDetail(courseId),
-    getMyEnrollments(),
-  ]);
-
+  const course = await getCourseDetail(courseId);
   if (!course) notFound();
-
-  const enrollment = enrollments.find((e) => e.course.id === courseId);
-  if (!enrollment) redirect(`/courses/${courseId}`);
 
   const allLessons = course.sections.flatMap((s) => s.lessons);
   const currentIndex = allLessons.findIndex((l) => l.id === currentLessonId);
@@ -47,10 +42,20 @@ export default async function LessonPage({
   const lesson = allLessons[currentIndex];
   const nextLessonId = allLessons[currentIndex + 1]?.id ?? null;
 
-  const progress = await getEnrollmentProgress(enrollment.id);
-  const completedIds = new Set(
-    (progress?.lessons ?? []).filter((l) => l.isCompleted).map((l) => l.lessonId)
-  );
+  // Admin has no Enrollment row (blocked server-side) and can't reach the
+  // enrollment/progress endpoints (Student/Instructor only) — preview only, no progress.
+  let completedIds = new Set<number>();
+
+  if (!isAdmin) {
+    const enrollments = await getMyEnrollments();
+    const enrollment = enrollments.find((e) => e.course.id === courseId);
+    if (!enrollment) redirect(`/courses/${courseId}`);
+
+    const progress = await getEnrollmentProgress(enrollment.id);
+    completedIds = new Set(
+      (progress?.lessons ?? []).filter((l) => l.isCompleted).map((l) => l.lessonId)
+    );
+  }
 
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[280px_1fr]">
@@ -70,6 +75,7 @@ export default async function LessonPage({
           lesson={lesson}
           nextLessonId={nextLessonId}
           initialIsCompleted={completedIds.has(currentLessonId)}
+          isAdminView={isAdmin}
         />
 
         {course.description ? (

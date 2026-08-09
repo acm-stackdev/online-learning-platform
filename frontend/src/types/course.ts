@@ -50,4 +50,6 @@ export interface Section {
 
 export interface CourseDetail extends CourseListItem {
   sections: Section[];
+  isEnrolled: boolean;
+  isOwner: boolean;
 }

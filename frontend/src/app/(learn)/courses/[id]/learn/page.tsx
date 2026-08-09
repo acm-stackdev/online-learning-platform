@@ -4,6 +4,7 @@ import { getCourseDetail } from "@/lib/api/courses";
 import { getMyEnrollments } from "@/lib/api/my-enrollments";
 import { getEnrollmentProgress } from "@/lib/api/progress";
 import { getCurrentUser } from "@/lib/api/me";
+import { Role } from "@/types/auth";
 
 export default async function LearnRedirectPage({
   params,
@@ -16,18 +17,21 @@ export default async function LearnRedirectPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [course, enrollments] = await Promise.all([
-    getCourseDetail(courseId),
-    getMyEnrollments(),
-  ]);
-
+  const course = await getCourseDetail(courseId);
   if (!course) notFound();
-
-  const enrollment = enrollments.find((e) => e.course.id === courseId);
-  if (!enrollment) redirect(`/courses/${courseId}`);
 
   const allLessons = course.sections.flatMap((s) => s.lessons);
   if (allLessons.length === 0) redirect(`/courses/${courseId}`);
+
+  // Admin can never hold a real Enrollment row (blocked server-side), so there's no
+  // "resume where you left off" progress to read — just preview from the first lesson.
+  if (user.role === Role.Admin) {
+    redirect(`/courses/${courseId}/learn/${allLessons[0].id}`);
+  }
+
+  const enrollments = await getMyEnrollments();
+  const enrollment = enrollments.find((e) => e.course.id === courseId);
+  if (!enrollment) redirect(`/courses/${courseId}`);
 
   const progress = await getEnrollmentProgress(enrollment.id);
   const completedIds = new Set(

@@ -32,10 +32,15 @@ export function UserMenu({ user }: { user: UserResponse }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground outline-none"
+        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-medium text-secondary-foreground outline-none"
         title={user.username}
       >
-        {initials(user.username)}
+        {user.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- small navbar avatar, same convention as ImageUpload's preview thumbnail
+          <img src={user.avatarUrl} alt="" className="size-full object-cover" />
+        ) : (
+          initials(user.username)
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-64">

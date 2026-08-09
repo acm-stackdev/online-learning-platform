@@ -15,17 +15,20 @@ export function LessonView({
   lesson,
   nextLessonId,
   initialIsCompleted,
+  isAdminView = false,
 }: {
   courseId: number;
   lesson: Lesson;
   nextLessonId: number | null;
   initialIsCompleted: boolean;
+  isAdminView?: boolean;
 }) {
   const [isCompleted, setIsCompleted] = useState(initialIsCompleted);
   const [marking, setMarking] = useState(false);
   const lastSavedAt = useRef(0);
 
   async function markComplete(watchSeconds: number) {
+    if (isAdminView) return;
     setIsCompleted(true);
     try {
       await updateLessonProgress(lesson.id, { watchSeconds, isCompleted: true });
@@ -35,6 +38,7 @@ export function LessonView({
   }
 
   function handleTimeUpdate(e: React.SyntheticEvent<HTMLVideoElement>) {
+    if (isAdminView) return;
     const currentTime = Math.floor(e.currentTarget.currentTime);
     if (currentTime - lastSavedAt.current < PROGRESS_SAVE_INTERVAL_S) return;
     lastSavedAt.current = currentTime;
@@ -75,7 +79,9 @@ export function LessonView({
         <h1 className="text-lg font-semibold tracking-tight">{lesson.title}</h1>
 
         <div className="flex items-center gap-2">
-          {isCompleted ? (
+          {isAdminView ? (
+            <span className="text-sm text-muted-foreground">Admin preview</span>
+          ) : isCompleted ? (
             <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Check className="size-4 text-primary" />
               Completed

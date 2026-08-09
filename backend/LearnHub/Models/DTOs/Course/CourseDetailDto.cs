@@ -23,5 +23,7 @@ namespace LearnHub.Models.DTOs.Course
     public class CourseDetailDto : CourseListItemDto
     {
         public List<SectionSummaryDto> Sections { get; set; } = new();
+        public bool IsEnrolled { get; set; }
+        public bool IsOwner { get; set; }
     }
 }

@@ -26,6 +26,7 @@ A cloud-native online learning platform built for a Westminster University final
 | Frontend Google sign-in | `@react-oauth/google` |
 | Frontend real-time | `@microsoft/signalr` |
 | Frontend media upload | Direct browser → Cloudinary (unsigned preset), same convention as the backend |
+| Frontend theming | `next-themes` — system-aware dark/light mode toggle |
 
 ---
 
@@ -44,16 +45,18 @@ Registration only ever accepts `Student` or `Instructor` — `Role` is validated
 ## Features Implemented
 
 - **Auth** — email/password registration with verification email, Google OAuth login, JWT access/refresh token rotation via `httpOnly` cookies, forgot/reset password, self-service profile update (username/avatar URL) and password change.
-- **Courses** — catalogue with search/filter, CRUD (Instructor-owned), submit-for-review → Admin approve/reject workflow, unpublish (self) and force-unpublish (Admin).
+- **Courses** — catalogue with search/filter, CRUD (Instructor-owned), submit-for-review → Admin approve/reject workflow, unpublish (self) and force-unpublish (Admin, with a dedicated "Published courses" admin tab to find and act on any live course). Category is picked from a small set of presets (Development/Design/Business/Marketing) or a free-text "Custom..." option.
 - **Sections & Lessons** — CRUD with reordering; lesson video/document content is uploaded **through the API** as `multipart/form-data` (up to 500MB) and pushed to Cloudinary server-side. This is different from avatars and course thumbnails, which are plain URL strings — the client uploads those directly to Cloudinary itself and only sends the resulting URL to the API.
 - **Enrollment & progress tracking** — free enrolment, per-lesson completion tracking, course-completion detection.
+- **Course preview for Admin/owner** — the course detail page and lesson player distinguish three viewer states returned by the API (`isEnrolled`/`isOwner`, plus the client's own `isAdmin` check): an enrolled Student sees the normal "Continue" experience with progress tracking, the owning Instructor sees an "Edit course" shortcut instead, and an Admin gets a clearly-labelled read-only preview of the actual video/PDF content (for moderation) with no enrolment, progress tracking, or certificate implied.
 - **Certificates** — PDF certificate auto-issued on course completion (PdfSharpCore + a template asset).
 - **Messaging** — real-time, SignalR-based, scoped per enrolment; live presence status (Online/Busy/Offline).
-- **Instructor application workflow** — a Student can apply to become an Instructor; an Admin approves or rejects.
-- **Admin panel** — user management, role changes, suspend/reinstate, force-unpublish, platform stats.
+- **Instructor application workflow** — a Student can apply to become an Instructor; an Admin approves or rejects. If an Admin later reverts a promoted user back to Student via the Users tab, the become-instructor page correctly shows "instructor access removed" rather than a stale "approved" message, and lets them re-apply.
+- **Admin panel** — user management, role changes, suspend/reinstate, course review (approve/reject) plus a separate published-courses view for force-unpublishing a live course, platform stats.
 - **Dashboards** — a consolidated "my stuff" endpoint for Students, and a separate one for Instructors (courses they own).
 - **AI course tutor chatbot** — Gemini-backed, per-course, stateless (the client resends recent conversation turns each request; nothing is persisted server-side). Scoped to the course's owner, an Admin, or an enrolled student — the same access rule that already gates lesson content.
 - **CSRF protection** — CORS locked to a single configurable frontend origin, plus a custom-header guard middleware on cookie-authenticated mutating requests.
+- **Theming** — system-aware dark/light mode toggle in both navbars (`next-themes`).
 
 **Explicitly out of scope:** payment processing (all courses are free) and Assignments/Grading (cut from scope during development to keep the project focused).
 
@@ -92,6 +95,8 @@ frontend/
 │   │                                #   refreshes an expired-but-still-valid one before redirecting to /login
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui primitives
+│   │   ├── theme-provider.tsx       # next-themes wrapper (wraps the root layout)
+│   │   ├── theme-toggle.tsx         # Dark/light mode toggle button, used in both navbars
 │   │   ├── layout/                 # PublicNavbar, AppNavbar, UserMenu, Footer
 │   │   ├── landing/                # Landing page sections
 │   │   ├── auth/                   # Auth forms, Google sign-in, session-expiry refresher
@@ -113,7 +118,7 @@ frontend/
 .github/workflows/backend-ci.yml    # CI: restore, build, test on every push/PR to main
 ```
 
-**Frontend status:** feature-complete across all four tiers — Public (landing, catalogue, course detail), Student (dashboard, my courses, lesson player with progress tracking, certificates, account settings, messaging, instructor application), Instructor (dashboard, course builder with curriculum + file upload, roster), and Admin (overview stats, course review queue, instructor application review, user management).
+**Frontend status:** feature-complete across all four tiers — Public (landing, catalogue, course detail with a distinct preview experience for Admin/course-owner), Student (dashboard, my courses, lesson player with progress tracking, certificates, account settings, messaging, instructor application), Instructor (dashboard, course builder with curriculum + file upload, roster), and Admin (overview stats, course review queue, published-courses management, instructor application review, user management).
 
 **`lib/api/` server/client split**, worth knowing before adding to it: functions using `serverApiFetch` (forwards cookies via `next/headers`, Server-Component-only) and functions using `apiFetch` (plain `fetch`, client-safe) are kept in **separate files** even when they cover the same feature area (e.g. `messaging.ts` vs a client-side messages helper, `my-enrollments.ts` vs `enrollments.ts`). Mixing them in one file risks a hard Next.js build error if that file is ever imported from a `"use client"` component.
 
@@ -259,7 +264,7 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 |---|---|---|---|
 | GET | `` | Public | Catalogue (search/category/pagination) |
 | GET | `pending` | Admin | Courses awaiting approval |
-| GET | `{id}` | Public (richer detail if enrolled/owner/admin) | Course detail |
+| GET | `{id}` | Public (richer detail if enrolled/owner/admin) | Course detail — includes `isEnrolled`/`isOwner` so the client can tell an enrolled Student, the owning Instructor, and an Admin apart |
 | POST | `` | Instructor | Create course |
 | PUT | `{id}` | Instructor | Update course |
 | DELETE | `{id}` | Instructor | Delete course |

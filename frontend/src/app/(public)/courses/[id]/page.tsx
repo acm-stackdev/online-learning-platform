@@ -10,6 +10,7 @@ import { EnrolButton } from "@/components/courses/EnrolButton";
 import { getCourseDetail } from "@/lib/api/courses";
 import { getCurrentUser } from "@/lib/api/me";
 import { formatDuration } from "@/lib/utils";
+import { Role } from "@/types/auth";
 
 export async function generateMetadata({
   params,
@@ -42,6 +43,8 @@ export default async function CourseDetailPage({
     0
   );
   const hasAccess = course.sections.some((s) => s.lessons.some((l) => l.contentUrl));
+  const isAdmin = user?.role === Role.Admin;
+  const isAdminPreview = isAdmin && !course.isOwner && !course.isEnrolled;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -63,6 +66,13 @@ export default async function CourseDetailPage({
         {" / "}
         <span>{course.title}</span>
       </nav>
+
+      {isAdminPreview ? (
+        <div className="mb-6 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          You&apos;re previewing this course as an Admin — content is unlocked for review, but
+          you won&apos;t enrol, track progress, or receive a certificate.
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -116,7 +126,13 @@ export default async function CourseDetailPage({
             <p className="text-xs text-muted-foreground">Full lifetime access</p>
           </div>
 
-          <EnrolButton courseId={course.id} isLoggedIn={!!user} hasAccess={hasAccess} />
+          <EnrolButton
+            courseId={course.id}
+            isLoggedIn={!!user}
+            isEnrolled={course.isEnrolled}
+            isOwner={course.isOwner}
+            isAdmin={isAdmin}
+          />
 
           <ul className="space-y-1.5 text-sm text-muted-foreground">
             {[
