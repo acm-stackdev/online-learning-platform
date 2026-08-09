@@ -7,6 +7,7 @@ import { Role } from "@/types/auth";
 const navLinks = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/courses", label: "Course review" },
+  { href: "/admin/courses/published", label: "Published courses" },
   { href: "/admin/applications", label: "Applications" },
   { href: "/admin/users", label: "Users" },
 ];

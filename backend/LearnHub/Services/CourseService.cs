@@ -42,7 +42,10 @@ namespace LearnHub.Services
             var query = _db.Courses.Include(c => c.Instructor).Where(c => c.Status == CourseStatus.Published);
 
             if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(c => c.Title.Contains(search) || c.Description.Contains(search));
+            {
+                var pattern = search.ToLower();
+                query = query.Where(c => c.Title.ToLower().Contains(pattern) || c.Description.ToLower().Contains(pattern));
+            }
 
             if (!string.IsNullOrWhiteSpace(category))
                 query = query.Where(c => c.Category == category);

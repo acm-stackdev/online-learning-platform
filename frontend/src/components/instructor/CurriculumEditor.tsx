@@ -6,6 +6,16 @@ import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LessonFormDialog } from "@/components/instructor/LessonFormDialog";
 import {
   createSection,
@@ -33,6 +43,10 @@ export function CurriculumEditor({
     sectionId: number;
     lesson?: Lesson;
   } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<
+    { type: "section"; id: number } | { type: "lesson"; id: number } | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
 
   function reportError(err: unknown) {
     setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -65,14 +79,22 @@ export function CurriculumEditor({
     }
   }
 
-  async function handleDeleteSection(sectionId: number) {
-    if (!confirm("Delete this section and all its lessons?")) return;
+  async function handleConfirmDelete() {
+    if (!pendingDelete) return;
     setError(null);
+    setDeleting(true);
     try {
-      await deleteSection(sectionId);
+      if (pendingDelete.type === "section") {
+        await deleteSection(pendingDelete.id);
+      } else {
+        await deleteLesson(pendingDelete.id);
+      }
       router.refresh();
+      setPendingDelete(null);
     } catch (err) {
       reportError(err);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -96,17 +118,6 @@ export function CurriculumEditor({
     setError(null);
     try {
       await reorderLessons(section.id, ids);
-      router.refresh();
-    } catch (err) {
-      reportError(err);
-    }
-  }
-
-  async function handleDeleteLesson(lessonId: number) {
-    if (!confirm("Delete this lesson?")) return;
-    setError(null);
-    try {
-      await deleteLesson(lessonId);
       router.refresh();
     } catch (err) {
       reportError(err);
@@ -143,7 +154,11 @@ export function CurriculumEditor({
               <Button variant="ghost" size="icon-sm" onClick={() => handleRenameSection(section)}>
                 <Pencil className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteSection(section.id)}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setPendingDelete({ type: "section", id: section.id })}
+              >
                 <Trash2 className="size-4" />
               </Button>
             </div>
@@ -186,7 +201,7 @@ export function CurriculumEditor({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => handleDeleteLesson(lesson.id)}
+                    onClick={() => setPendingDelete({ type: "lesson", id: lesson.id })}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -227,6 +242,34 @@ export function CurriculumEditor({
           onOpenChange={(open) => !open && setLessonDialog(null)}
         />
       ) : null}
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDelete?.type === "section" ? "Delete section?" : "Delete lesson?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.type === "section"
+                ? "This will also delete every lesson inside it. This can't be undone."
+                : "This can't be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

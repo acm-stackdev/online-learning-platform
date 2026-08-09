@@ -11,10 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api/client";
 import { hardNavigate } from "@/lib/hard-navigate";
 import { initials } from "@/lib/utils";
-import type { UserResponse } from "@/types/auth";
+import { roleLabels, type UserResponse } from "@/types/auth";
 
 export function UserMenu({ user }: { user: UserResponse }) {
   const [loggingOut, setLoggingOut] = useState(false);
@@ -38,8 +39,11 @@ export function UserMenu({ user }: { user: UserResponse }) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-64">
-        <div className="px-1.5 py-1.5">
-          <p className="truncate text-sm font-medium">{user.username}</p>
+        <div className="space-y-1 px-1.5 py-1.5">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium">{user.username}</p>
+            <Badge variant="secondary">{roleLabels[user.role]}</Badge>
+          </div>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
 

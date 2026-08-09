@@ -45,6 +45,11 @@ export default async function BecomeInstructorPage() {
   const latest = applications[0] ?? null;
   const canApply = !latest || latest.status !== ApplicationStatus.Pending;
 
+  // We only reach this point when the user is currently a Student (checked above), so a
+  // latest application of "Approved" can't still be true — an admin must have reverted the
+  // role back to Student since. Treat it as stale rather than showing an outdated success message.
+  const isStaleApproval = latest?.status === ApplicationStatus.Approved;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:px-6">
       <div>
@@ -54,7 +59,17 @@ export default async function BecomeInstructorPage() {
         </p>
       </div>
 
-      {latest ? (
+      {latest && isStaleApproval ? (
+        <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-4 text-sm">
+          <p className="font-medium">Instructor access removed</p>
+          <p className="text-muted-foreground">
+            Your previous application was approved, but instructor access has since been
+            removed from your account. You&apos;re welcome to apply again below.
+          </p>
+        </div>
+      ) : null}
+
+      {latest && !isStaleApproval ? (
         <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-4 text-sm">
           <p className="font-medium">{statusCopy[latest.status].heading}</p>
           <p className="text-muted-foreground">{statusCopy[latest.status].body}</p>

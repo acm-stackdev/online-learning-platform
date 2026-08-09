@@ -7,14 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { changeUserRole, reinstateUser, suspendUser } from "@/lib/api/admin-actions";
 import { ApiError } from "@/lib/api/client";
-import { Role } from "@/types/auth";
+import { Role, roleLabels } from "@/types/auth";
 import type { AdminUser } from "@/types/admin";
-
-const roleLabels: Record<Role, string> = {
-  [Role.Student]: "Student",
-  [Role.Instructor]: "Instructor",
-  [Role.Admin]: "Admin",
-};
 
 export function UserRow({
   user,

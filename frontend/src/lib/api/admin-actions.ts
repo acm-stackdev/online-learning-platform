@@ -24,6 +24,10 @@ export function rejectCourse(courseId: number) {
   return apiFetch<void>(`/api/courses/${courseId}/reject`, { method: "POST" });
 }
 
+export function forceUnpublishCourse(courseId: number) {
+  return apiFetch<void>(`/api/courses/${courseId}/force-unpublish`, { method: "PUT" });
+}
+
 export function approveApplication(applicationId: number) {
   return apiFetch<void>(`/api/instructor-applications/${applicationId}/approve`, {
     method: "POST",

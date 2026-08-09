@@ -3,16 +3,19 @@ import { GraduationCap } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUser } from "@/lib/api/me";
+import { Role } from "@/types/auth";
 
-const navLinks = [
-  { href: "/courses", label: "Courses" },
-  { href: "/courses?view=categories", label: "Categories" },
-  { href: "/become-instructor", label: "Teach" },
-];
+const baseNavLinks = [{ href: "/courses", label: "Courses" }];
+
+const teachLink = { href: "/become-instructor", label: "Teach" };
 
 export async function PublicNavbar() {
   const user = await getCurrentUser();
+  const isAdmin = user?.role === Role.Admin;
+
+  const navLinks = isAdmin ? baseNavLinks : [...baseNavLinks, teachLink];
 
   return (
     <header className="border-b border-border bg-background">
@@ -36,11 +39,15 @@ export async function PublicNavbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <>
-              <Link href="/dashboard" className={buttonVariants({ size: "sm" })}>
-                Dashboard
+              <Link
+                href={isAdmin ? "/admin" : "/dashboard"}
+                className={buttonVariants({ size: "sm" })}
+              >
+                {isAdmin ? "Admin" : "Dashboard"}
               </Link>
               <UserMenu user={user} />
             </>
