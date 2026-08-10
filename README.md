@@ -19,7 +19,7 @@ A cloud-native online learning platform built for a Westminster University final
 | Email | MailKit/SMTP (verification, password reset) |
 | Logging | Serilog (console sink) |
 | Testing | xUnit + FluentAssertions + Moq, EF Core InMemory provider |
-| CI/CD | GitHub Actions (`.github/workflows/backend-ci.yml`) |
+| CI/CD | GitHub Actions (`backend-ci.yml` + `frontend-ci.yml`, path-filtered) |
 | Frontend | Next.js 16 (App Router) + TypeScript |
 | Frontend styling | Tailwind CSS v4 + shadcn/ui |
 | Frontend forms | react-hook-form + zod |
@@ -258,7 +258,7 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 | POST | `refresh` | None (refresh cookie) | Rotate access/refresh tokens |
 | POST | `logout` | None (refresh cookie) | Revoke refresh token, clear cookies |
 | GET | `me` | Authenticated | Current user's profile |
-| PUT | `me` | Authenticated | Update username/avatar URL |
+| PUT | `me` | Authenticated | Update username/avatar photo |
 | POST | `change-password` | Authenticated | Change password (while logged in) |
 
 ### Courses (`/api/courses`)
@@ -382,16 +382,14 @@ npm test          # one-shot run
 npm run test:watch
 ```
 
-Not yet wired into GitHub Actions — only the backend has a CI workflow so far (see below).
-
 ### CI/CD with GitHub Actions
 
-`.github/workflows/backend-ci.yml` runs on every push and pull request to `main` that touches the backend:
-1. Installs the .NET SDK on a temporary GitHub-hosted machine.
-2. Builds the solution (`LearnHub.sln`), catching compile errors.
-3. Runs the full test suite, catching behavioral errors.
+Two independent workflows, each scoped to only run when the part of the repo it covers actually changes (via `paths:` filters), so a frontend-only change doesn't wait on a .NET build and vice versa:
 
-If any step fails, GitHub marks the change with a red cross and shows exactly which test failed, before the code is ever merged.
+- **`.github/workflows/backend-ci.yml`** — on push/PR to `main` touching `backend/**` or `LearnHub.sln`: installs the .NET SDK, builds the solution, runs the full test suite (284 tests).
+- **`.github/workflows/frontend-ci.yml`** — on push/PR to `main` touching `frontend/**`: installs Node + npm dependencies (`npm ci`, exactly reproducing the lockfile — no floating versions), then runs `npm run lint`, `npm test` (26 tests), and `npm run build` in sequence. The production build step needs no environment variables or a live backend to succeed — every route that fetches data is server-rendered on demand (`ƒ` in the build output) rather than statically generated at build time, so there's nothing for the build to fetch yet.
+
+If any step in either workflow fails, GitHub marks the change with a red cross and shows exactly what failed, before the code is ever merged.
 
 ### Running tests locally
 
