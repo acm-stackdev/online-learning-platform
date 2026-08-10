@@ -17,13 +17,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LessonFormDialog } from "@/components/instructor/LessonFormDialog";
+import { SectionRenameDialog } from "@/components/instructor/SectionRenameDialog";
 import {
   createSection,
   deleteLesson,
   deleteSection,
   reorderLessons,
   reorderSections,
-  updateSection,
 } from "@/lib/api/course-builder";
 import { ApiError } from "@/lib/api/client";
 import { formatDuration } from "@/lib/utils";
@@ -43,6 +43,7 @@ export function CurriculumEditor({
     sectionId: number;
     lesson?: Lesson;
   } | null>(null);
+  const [renameSection, setRenameSection] = useState<Section | null>(null);
   const [pendingDelete, setPendingDelete] = useState<
     { type: "section"; id: number } | { type: "lesson"; id: number } | null
   >(null);
@@ -98,18 +99,6 @@ export function CurriculumEditor({
     }
   }
 
-  async function handleRenameSection(section: Section) {
-    const title = prompt("Section title", section.title);
-    if (!title || title === section.title) return;
-    setError(null);
-    try {
-      await updateSection(section.id, title);
-      router.refresh();
-    } catch (err) {
-      reportError(err);
-    }
-  }
-
   async function handleMoveLesson(section: Section, index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= section.lessons.length) return;
@@ -151,7 +140,7 @@ export function CurriculumEditor({
               >
                 <ChevronDown className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon-sm" onClick={() => handleRenameSection(section)}>
+              <Button variant="ghost" size="icon-sm" onClick={() => setRenameSection(section)}>
                 <Pencil className="size-4" />
               </Button>
               <Button
@@ -240,6 +229,14 @@ export function CurriculumEditor({
           lesson={lessonDialog.lesson}
           open
           onOpenChange={(open) => !open && setLessonDialog(null)}
+        />
+      ) : null}
+
+      {renameSection ? (
+        <SectionRenameDialog
+          section={renameSection}
+          open
+          onOpenChange={(open) => !open && setRenameSection(null)}
         />
       ) : null}
 
