@@ -117,6 +117,8 @@ export default async function CourseDetailPage({
                 src={course.thumbnailUrl}
                 alt={course.title}
                 fill
+                sizes="(min-width: 1024px) 33vw, 100vw"
+                priority
                 className="object-cover"
               />
             ) : null}

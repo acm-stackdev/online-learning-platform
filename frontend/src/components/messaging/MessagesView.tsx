@@ -10,14 +10,17 @@ import type { Conversation, Message, MessagesReadPayload, Presence } from "@/typ
 export function MessagesView({
   initialConversations,
   currentUserId,
+  initialPresence,
 }: {
   initialConversations: Conversation[];
   currentUserId: number;
+  initialPresence: string;
 }) {
   const [conversations, setConversations] = useState(initialConversations);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<number | null>(
     initialConversations[0]?.enrollmentId ?? null
   );
+  const [myPresence, setMyPresence] = useState(initialPresence);
 
   const selected =
     conversations.find((c) => c.enrollmentId === selectedEnrollmentId) ?? null;
@@ -92,7 +95,7 @@ export function MessagesView({
     );
   }, []);
 
-  const { markRead, sendMessage } = useMessagingConnection({
+  const { markRead, sendMessage, setPresence } = useMessagingConnection({
     onReceiveMessage: handleReceiveMessage,
     onMessagesRead: handleMessagesRead,
     onPresenceChanged: handlePresenceChanged,
@@ -104,12 +107,19 @@ export function MessagesView({
     if (unread && unread > 0) markRead(conversationId);
   }
 
+  function handleSetPresence(status: "Online" | "Busy") {
+    setMyPresence(status);
+    setPresence(status);
+  }
+
   return (
     <div className="grid flex-1 grid-cols-1 md:grid-cols-[320px_1fr]">
       <ConversationList
         conversations={conversations}
         selectedEnrollmentId={selectedEnrollmentId}
         onSelect={setSelectedEnrollmentId}
+        myPresence={myPresence}
+        onSetPresence={handleSetPresence}
       />
 
       {selected ? (

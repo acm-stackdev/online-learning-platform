@@ -18,6 +18,7 @@ export interface UserResponse {
   email: string;
   role: Role;
   avatarUrl: string | null;
+  presenceStatus: string;
 }
 
 export interface MessageResponse {

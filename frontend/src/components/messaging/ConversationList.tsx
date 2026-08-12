@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn, initials } from "@/lib/utils";
 import type { Conversation } from "@/types/messaging";
 
@@ -13,19 +19,51 @@ function formatTimestamp(iso: string | null) {
     : date.toLocaleDateString();
 }
 
+const presenceDotClass: Record<string, string> = {
+  Online: "bg-primary",
+  Busy: "bg-destructive",
+};
+
 export function ConversationList({
   conversations,
   selectedEnrollmentId,
   onSelect,
+  myPresence,
+  onSetPresence,
 }: {
   conversations: Conversation[];
   selectedEnrollmentId: number | null;
   onSelect: (enrollmentId: number) => void;
+  myPresence: string;
+  onSetPresence: (status: "Online" | "Busy") => void;
 }) {
   return (
     <div className="flex h-full flex-col border-r border-border">
-      <div className="border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h1 className="text-lg font-semibold tracking-tight">Messages</h1>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground outline-none hover:bg-muted">
+            <span
+              className={cn(
+                "size-2 rounded-full",
+                presenceDotClass[myPresence] ?? "bg-muted-foreground"
+              )}
+            />
+            {myPresence}
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onSetPresence("Online")}>
+              <span className="size-2 rounded-full bg-primary" />
+              Online
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSetPresence("Busy")}>
+              <span className="size-2 rounded-full bg-destructive" />
+              Busy
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {conversations.length === 0 ? (

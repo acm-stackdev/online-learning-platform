@@ -61,7 +61,22 @@ export const ChatThread = forwardRef<
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-4 py-3">
-        <p className="text-sm font-medium">{conversation.otherPartyUsername}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium">{conversation.otherPartyUsername}</p>
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              conversation.otherPartyPresence === "Online"
+                ? "bg-primary"
+                : conversation.otherPartyPresence === "Busy"
+                  ? "bg-destructive"
+                  : "bg-muted-foreground"
+            )}
+          />
+          <span className="text-xs text-muted-foreground">
+            {conversation.otherPartyPresence}
+          </span>
+        </div>
         <p className="text-xs text-muted-foreground">{conversation.courseTitle}</p>
       </div>
 

@@ -217,6 +217,7 @@ namespace LearnHub.Controllers
             Email = user.Email,
             Role = user.Role,
             AvatarUrl = user.AvatarUrl,
+            PresenceStatus = user.PresenceStatus.ToString(),
         };
     }
 }

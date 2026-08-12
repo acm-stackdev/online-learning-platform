@@ -15,7 +15,11 @@ export default async function MessagesPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MessagesView initialConversations={conversations} currentUserId={user.id} />
+      <MessagesView
+        initialConversations={conversations}
+        currentUserId={user.id}
+        initialPresence={user.presenceStatus}
+      />
     </div>
   );
 }

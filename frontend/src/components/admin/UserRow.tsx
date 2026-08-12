@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { changeUserRole, reinstateUser, suspendUser } from "@/lib/api/admin-actions";
 import { ApiError } from "@/lib/api/client";
 import { Role, roleLabels } from "@/types/auth";
@@ -21,8 +28,9 @@ export function UserRow({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleRoleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const role = Number(e.target.value) as Role;
+  async function handleRoleChange(value: string | null) {
+    if (value === null) return;
+    const role = Number(value) as Role;
     if (role === user.role) return;
     setLoading(true);
     setError(null);
@@ -57,18 +65,23 @@ export function UserRow({
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
       </td>
       <td className="px-4 py-3">
-        <select
-          value={user.role}
-          onChange={handleRoleChange}
+        <Select
+          items={roleLabels}
+          value={String(user.role)}
+          onValueChange={handleRoleChange}
           disabled={loading || isSelf}
-          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none disabled:opacity-50"
         >
-          {Object.entries(roleLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger size="sm" className="w-fit">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            {Object.entries(roleLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </td>
       <td className="px-4 py-3">
         {user.isSuspended ? (
