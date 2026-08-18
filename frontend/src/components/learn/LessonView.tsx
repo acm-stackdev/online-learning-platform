@@ -55,8 +55,8 @@ export function LessonView({
 
   return (
     <div className="space-y-4">
-      <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-        {lesson.contentType === ContentType.Video ? (
+      {lesson.contentType === ContentType.Video ? (
+        <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
           <video
             key={lesson.id}
             src={lesson.contentUrl ?? undefined}
@@ -65,15 +65,17 @@ export function LessonView({
             onTimeUpdate={handleTimeUpdate}
             onEnded={() => markComplete(lesson.duration)}
           />
-        ) : (
+        </div>
+      ) : (
+        <div className="h-[80vh] w-full overflow-hidden rounded-lg bg-black">
           <iframe
             key={lesson.id}
             src={lesson.contentUrl ?? undefined}
             className="size-full bg-white"
             title={lesson.title}
           />
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">{lesson.title}</h1>

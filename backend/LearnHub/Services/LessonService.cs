@@ -62,13 +62,18 @@ namespace LearnHub.Services
             lesson.Title = dto.Title;
             lesson.Duration = dto.Duration;
 
+            string? oldContentUrl = null;
             if (dto.File is not null)
             {
                 ValidateFile(dto.File, lesson.ContentType);
+                oldContentUrl = lesson.ContentUrl;
                 lesson.ContentUrl = await _fileUploadService.UploadAsync(dto.File, lesson.ContentType);
             }
 
             await _db.SaveChangesAsync();
+
+            if (oldContentUrl is not null)
+                await _fileUploadService.DeleteAsync(oldContentUrl, lesson.ContentType);
 
             return MapLesson(lesson);
         }
@@ -79,6 +84,8 @@ namespace LearnHub.Services
 
             _db.Lessons.Remove(lesson);
             await _db.SaveChangesAsync();
+
+            await _fileUploadService.DeleteAsync(lesson.ContentUrl, lesson.ContentType);
         }
 
         public async Task ReorderAsync(ReorderLessonsDto dto, long instructorId)

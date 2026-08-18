@@ -13,7 +13,11 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { hardNavigate } from "@/lib/hard-navigate";
-import { isUserResponse } from "@/types/auth";
+import { isUserResponse, Role } from "@/types/auth";
+
+function postLoginDestination(role: Role) {
+  return role === Role.Admin ? "/admin/users" : "/dashboard";
+}
 
 const loginSchema = z.object({
   email: z.email("Enter a valid email address"),
@@ -37,8 +41,8 @@ export function LoginForm() {
   async function onSubmit(values: LoginValues) {
     setFormError(null);
     try {
-      await login(values);
-      hardNavigate("/dashboard");
+      const result = await login(values);
+      hardNavigate(postLoginDestination(result.role));
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Something went wrong.");
     }
@@ -97,7 +101,7 @@ export function LoginForm() {
         onSuccess={(result) => {
           setFormError(null);
           if (isUserResponse(result)) {
-            hardNavigate("/dashboard");
+            hardNavigate(postLoginDestination(result.role));
           } else {
             setCheckEmail(true);
           }

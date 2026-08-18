@@ -18,6 +18,9 @@ namespace LearnHub.Tests.Services
             fileUploadMock
                 .Setup(f => f.UploadAsync(It.IsAny<IFormFile>(), It.IsAny<ContentType>()))
                 .ReturnsAsync("https://cloudinary.example.com/file.mp4");
+            fileUploadMock
+                .Setup(f => f.DeleteAsync(It.IsAny<string>(), It.IsAny<ContentType>()))
+                .Returns(Task.CompletedTask);
             var sut = new LessonService(db, fileUploadMock.Object);
             return (db, sut, fileUploadMock);
         }
@@ -249,6 +252,32 @@ namespace LearnHub.Tests.Services
             ex.Which.StatusCode.Should().Be(404);
         }
 
+        [Fact]
+        public async Task UpdateAsync_NewFileProvided_DeletesOldContentUrl()
+        {
+            var (db, sut, fileUploadMock) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var section = SeedCourseWithSection(db, instructor.Id);
+            var created = await sut.CreateAsync(new CreateLessonDto { SectionId = section.Id, Title = "Lesson 1", ContentType = ContentType.Video, Duration = 120, File = BuildFormFile("video.mp4") }, instructor.Id);
+
+            await sut.UpdateAsync(created.Id, new UpdateLessonDto { Title = "Lesson 1", Duration = 120, File = BuildFormFile("video2.mp4") }, instructor.Id);
+
+            fileUploadMock.Verify(f => f.DeleteAsync("https://cloudinary.example.com/file.mp4", ContentType.Video), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_NoFileProvided_DoesNotDeleteContentUrl()
+        {
+            var (db, sut, fileUploadMock) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var section = SeedCourseWithSection(db, instructor.Id);
+            var created = await sut.CreateAsync(new CreateLessonDto { SectionId = section.Id, Title = "Lesson 1", ContentType = ContentType.Video, Duration = 120, File = BuildFormFile("video.mp4") }, instructor.Id);
+
+            await sut.UpdateAsync(created.Id, new UpdateLessonDto { Title = "Updated title", Duration = 200 }, instructor.Id);
+
+            fileUploadMock.Verify(f => f.DeleteAsync(It.IsAny<string>(), It.IsAny<ContentType>()), Times.Never);
+        }
+
         // ----- DeleteAsync -----
 
         [Fact]
@@ -262,6 +291,19 @@ namespace LearnHub.Tests.Services
             await sut.DeleteAsync(created.Id, instructor.Id);
 
             db.Lessons.Any(l => l.Id == created.Id).Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task DeleteAsync_Owner_DeletesCloudinaryFile()
+        {
+            var (db, sut, fileUploadMock) = CreateSut();
+            var instructor = SeedInstructor(db);
+            var section = SeedCourseWithSection(db, instructor.Id);
+            var created = await sut.CreateAsync(new CreateLessonDto { SectionId = section.Id, Title = "Lesson 1", ContentType = ContentType.Video, Duration = 120, File = BuildFormFile("video.mp4") }, instructor.Id);
+
+            await sut.DeleteAsync(created.Id, instructor.Id);
+
+            fileUploadMock.Verify(f => f.DeleteAsync("https://cloudinary.example.com/file.mp4", ContentType.Video), Times.Once);
         }
 
         [Fact]

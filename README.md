@@ -51,13 +51,14 @@ Registration only ever accepts `Student` or `Instructor` — `Role` is validated
 - **Enrollment & progress tracking** — free enrolment, per-lesson completion tracking, course-completion detection, and unenrolling (self-service from "My courses", or removal by the owning Instructor from the course roster / an Admin) — the confirmation dialog is explicit that this also deletes the student's progress, certificate (if issued), and message history for that course, since those cascade-delete with the enrolment.
 - **Course preview for Admin/owner** — the course detail page and lesson player distinguish three viewer states returned by the API (`isEnrolled`/`isOwner`, plus the client's own `isAdmin` check): an enrolled Student sees the normal "Continue" experience with progress tracking, the owning Instructor sees an "Edit course" shortcut instead, and an Admin gets a clearly-labelled read-only preview of the actual video/PDF content (for moderation) with no enrolment, progress tracking, or certificate implied.
 - **Certificates** — PDF certificate auto-issued on course completion (PdfSharpCore + a template asset).
-- **Messaging** — real-time, SignalR-based, scoped per enrolment; live presence status (Online/Busy/Offline).
+- **Messaging** — real-time, SignalR-based, scoped per enrolment; live presence status (Online/Busy/Offline) shown against the other party in the conversation list and the open chat thread, plus a self-service Online/Busy toggle in the conversation list header.
 - **Instructor application workflow** — a Student can apply to become an Instructor; an Admin approves or rejects. If an Admin later reverts a promoted user back to Student via the Users tab, the become-instructor page correctly shows "instructor access removed" rather than a stale "approved" message, and lets them re-apply.
 - **Admin panel** — user management, role changes, suspend/reinstate, course review (approve/reject) plus a separate published-courses view for force-unpublishing a live course, platform stats.
 - **Dashboards** — a consolidated "my stuff" endpoint for Students, and a separate one for Instructors (courses they own).
 - **AI course tutor chatbot** — Gemini-backed, per-course, stateless (the client resends recent conversation turns each request; nothing is persisted server-side), rendered as a floating widget on both the course detail page and the lesson player, with markdown-formatted replies. Any logged-in user can ask about a **published** course — not just the owner, Admin, or already-enrolled students — so it also works as a pre-enrollment "ask about this course" helper; Draft/PendingApproval/Rejected courses stay restricted to their owner and Admin.
 - **CSRF protection** — CORS locked to a single configurable frontend origin, plus a custom-header guard middleware on cookie-authenticated mutating requests.
 - **Theming** — system-aware dark/light mode toggle in both navbars (`next-themes`).
+- **Static content pages** — About, Terms of Service, and Privacy Policy pages linked from the public footer.
 
 **Explicitly out of scope:** payment processing (all courses are free) and Assignments/Grading (cut from scope during development to keep the project focused).
 
@@ -401,7 +402,15 @@ dotnet test LearnHub.sln
 
 ## Deployment
 
-Not yet deployed. `GET /health` (real DB-connectivity check against Neon via `AspNetCore.HealthChecks.NpgSql`, `app.MapHealthChecks("/health")` in `Program.cs`) is already implemented and manually verified against the live database — it just isn't wired into any hosting yet. Still queued: a `Dockerfile`, a Render service, and an UptimeRobot monitor pointed at `/health`.
+Target architecture: backend on **Render** (Docker web service, needed for SignalR WebSocket support), frontend on **Vercel** (native Next.js host), database reusing the existing dev **Neon** Postgres instance.
+
+The backend is container-ready:
+- `backend/LearnHub/Dockerfile` — multi-stage .NET 8 build (SDK image to publish, ASP.NET runtime image to run), listens on port `8080` via `ASPNETCORE_HTTP_PORTS`.
+- `Program.cs` runs `UseForwardedHeaders` before `UseHttpsRedirection`, so it correctly trusts Render's `X-Forwarded-Proto` header instead of looping on HTTPS redirects behind Render's TLS-terminating proxy.
+- `Program.cs` calls `Database.MigrateAsync()` on startup, so the container self-applies EF Core migrations — no manual `dotnet ef database update` step needed post-deploy.
+- `GET /health` (real DB-connectivity check against Neon via `AspNetCore.HealthChecks.NpgSql`) is implemented and manually verified — ready for Render's health check and an UptimeRobot monitor.
+
+Not yet done (manual dashboard steps, not code): creating the Render web service and Vercel project, setting environment variables on each, pointing `FRONTEND__BASEURL` at the real Vercel URL, adding that URL to the Google OAuth Client's authorized JavaScript origins, and setting up an UptimeRobot monitor against `/health`.
 
 ---
 
