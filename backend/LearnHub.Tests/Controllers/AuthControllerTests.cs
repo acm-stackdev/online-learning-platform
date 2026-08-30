@@ -15,9 +15,7 @@ using System.Net;
 
 namespace LearnHub.Tests.Controllers
 {
-    // The Google endpoint is not covered here for the same reason GoogleLoginAsync
-    // is excluded from AuthServiceTests: it delegates straight into the un-mockable
-    // static Google SDK call.
+
     public class AuthControllerTests
     {
         private static (AppDbContext Db, AuthController Controller, JwtHelper JwtHelper) CreateSut(
