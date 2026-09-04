@@ -1,6 +1,28 @@
-# LearnHub — Online Learning Platform
+# LearnHub — Cloud-Native Online Learning Platform
 
-A cloud-native online learning platform built for a Westminster University final-year project. Students browse and enrol in free courses, instructors create and manage course content, and admins govern the platform.
+> MSc Software Engineering Final Project — University of Westminster 2025/26
+> 
+> **Student:** Aung Chan Myae | **Supervisor:** Dr. David Huang
+
+LearnHub is a full-stack, cloud-native Learning Management System providing role-based learning experiences for Students, Instructors, and Administrators. Students browse and enrol in free courses, track lesson progress, chat with an AI tutor, message their instructor in real time, and download auto-generated certificates. Instructors create and manage course content. Admins govern the platform.
+
+---
+
+## Table of Contents
+
+- [Tech Stack](#tech-stack)
+- [Roles and Permissions](#roles-and-permissions)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Backend Setup](#backend-setup)
+  - [Frontend Setup](#frontend-setup)
+  - [Demo Accounts](#demo-accounts)
+- [Environment Variables](#environment-variables)
+- [Running Tests](#running-tests)
+- [API Overview](#api-overview)
+- [Deployment](#deployment)
 
 ---
 
@@ -8,122 +30,93 @@ A cloud-native online learning platform built for a Westminster University final
 
 | Layer | Technology |
 |---|---|
-| Backend API | ASP.NET Core 8 (C#) |
-| Database | PostgreSQL — [Neon](https://neon.tech) (serverless) |
-| ORM | Entity Framework Core 8 + Npgsql |
-| Auth | JWT in `httpOnly` cookies + Google OAuth 2.0 |
-| Real-time | SignalR (messaging, presence) |
-| AI | Google Gemini API (`gemini-flash-latest`) — course tutor chatbot |
-| Media | Cloudinary |
-| PDF | PdfSharpCore (certificate generation from a template) |
-| Email | MailKit/SMTP (verification, password reset) |
-| Logging | Serilog (console sink) |
-| Testing | xUnit + FluentAssertions + Moq, EF Core InMemory provider |
-| CI/CD | GitHub Actions (`backend-ci.yml` + `frontend-ci.yml`, path-filtered) |
-| Frontend | Next.js 16 (App Router) + TypeScript |
-| Frontend styling | Tailwind CSS v4 + shadcn/ui |
-| Frontend forms | react-hook-form + zod |
-| Frontend Google sign-in | `@react-oauth/google` |
-| Frontend real-time | `@microsoft/signalr` |
-| Frontend media upload | Direct browser → Cloudinary (unsigned preset), same convention as the backend |
-| Frontend theming | `next-themes` — system-aware dark/light mode toggle |
-| Frontend testing | Vitest + React Testing Library |
+| **Backend API** | ASP.NET Core .NET 8 (C#) |
+| **Database** | PostgreSQL — [Neon](https://neon.tech) serverless |
+| **ORM** | Entity Framework Core 8 + Npgsql |
+| **Authentication** | JWT in `httpOnly` cookies + Google OAuth 2.0 |
+| **Real-Time** | SignalR (messaging and presence tracking) |
+| **AI Chatbot** | Google Gemini API (`gemini-flash-latest`) |
+| **Media Storage** | Cloudinary CDN |
+| **PDF Generation** | PdfSharpCore (certificate generation from a template asset) |
+| **Email** | MailKit / SMTP (verification and password reset) |
+| **Logging** | Serilog (console sink) |
+| **Backend Testing** | xUnit + FluentAssertions + Moq + EF Core InMemory |
+| **CI/CD** | GitHub Actions (path-filtered workflows) |
+| **Frontend** | Next.js 14 (App Router) + TypeScript |
+| **Frontend Styling** | Tailwind CSS + shadcn/ui |
+| **Frontend Forms** | react-hook-form + zod |
+| **Frontend Real-Time** | `@microsoft/signalr` |
+| **Frontend Testing** | Vitest + React Testing Library |
 
 ---
 
-## Roles & Permissions
+## Roles and Permissions
 
-| Role | Notes |
+| Role | Description |
 |---|---|
-| **Student** | Browse catalogue, enrol in free courses, track lesson progress, download certificates, message their instructor, apply to become an Instructor. |
-| **Instructor** | Everything a Student can do (a superset — can enrol in *other* instructors' courses), plus create/edit courses, upload lesson content, submit courses for review, and view an instructor dashboard. |
-| **Admin** | Manage all users (search, role changes, suspend/reinstate), approve/reject courses and instructor applications, force-unpublish any course, view platform-wide stats. Cannot enrol in courses. Cannot self-register — the only way to create an Admin is an existing Admin promoting a user, or the dev-only seeded account (see [Getting Started](#getting-started)). |
+| **Student** | Browse catalogue, enrol in free courses, track lesson progress, download certificates, message instructors, apply to become an Instructor. |
+| **Instructor** | Everything a Student can do (Instructor is a superset — can enrol in other instructors' courses), plus create/edit courses, upload lesson content, submit courses for admin review, and view an instructor dashboard. |
+| **Admin** | Manage all users (search, role changes, suspend/reinstate), approve/reject courses and instructor applications, force-unpublish any course, view platform-wide statistics. Cannot enrol in courses. Cannot self-register — must be promoted by an existing Admin or seeded via the dev account. |
 
-Registration only ever accepts `Student` or `Instructor` — `Role` is validated server-side and admin self-registration is explicitly rejected.
+> **Note:** Registration only accepts `Student` or `Instructor` roles. Admin self-registration is explicitly rejected server-side.
 
 ---
 
-## Features Implemented
+## Features
 
-- **Auth** — email/password registration with verification email, Google OAuth login, JWT access/refresh token rotation via `httpOnly` cookies, forgot/reset password, self-service profile update (username/avatar URL) and password change.
-- **Courses** — catalogue with search/filter, CRUD (Instructor-owned, including delete — only available once a course is unpublished, matching the backend's own rule), submit-for-review → Admin approve/reject workflow, unpublish (self) and force-unpublish (Admin, with a dedicated "Published courses" admin tab to find and act on any live course). Category is picked from a small set of presets (Development/Design/Business/Marketing) or a free-text "Custom..." option.
-- **Sections & Lessons** — CRUD with reordering; lesson video/document content is uploaded **through the API** as `multipart/form-data` (up to 500MB) and pushed to Cloudinary server-side. This is different from avatars and course thumbnails, which are plain URL strings — the client uploads those directly to Cloudinary itself and only sends the resulting URL to the API.
-- **Enrollment & progress tracking** — free enrolment, per-lesson completion tracking, course-completion detection, and unenrolling (self-service from "My courses", or removal by the owning Instructor from the course roster / an Admin) — the confirmation dialog is explicit that this also deletes the student's progress, certificate (if issued), and message history for that course, since those cascade-delete with the enrolment.
-- **Course preview for Admin/owner** — the course detail page and lesson player distinguish three viewer states returned by the API (`isEnrolled`/`isOwner`, plus the client's own `isAdmin` check): an enrolled Student sees the normal "Continue" experience with progress tracking, the owning Instructor sees an "Edit course" shortcut instead, and an Admin gets a clearly-labelled read-only preview of the actual video/PDF content (for moderation) with no enrolment, progress tracking, or certificate implied.
-- **Certificates** — PDF certificate auto-issued on course completion (PdfSharpCore + a template asset).
-- **Messaging** — real-time, SignalR-based, scoped per enrolment; live presence status (Online/Busy/Offline) shown against the other party in the conversation list and the open chat thread, plus a self-service Online/Busy toggle in the conversation list header.
-- **Instructor application workflow** — a Student can apply to become an Instructor; an Admin approves or rejects. If an Admin later reverts a promoted user back to Student via the Users tab, the become-instructor page correctly shows "instructor access removed" rather than a stale "approved" message, and lets them re-apply.
-- **Admin panel** — user management, role changes, suspend/reinstate, course review (approve/reject) plus a separate published-courses view for force-unpublishing a live course, platform stats.
-- **Dashboards** — a consolidated "my stuff" endpoint for Students, and a separate one for Instructors (courses they own).
-- **AI course tutor chatbot** — Gemini-backed, per-course, stateless (the client resends recent conversation turns each request; nothing is persisted server-side), rendered as a floating widget on both the course detail page and the lesson player, with markdown-formatted replies. Any logged-in user can ask about a **published** course — not just the owner, Admin, or already-enrolled students — so it also works as a pre-enrollment "ask about this course" helper; Draft/PendingApproval/Rejected courses stay restricted to their owner and Admin.
-- **CSRF protection** — CORS locked to a single configurable frontend origin, plus a custom-header guard middleware on cookie-authenticated mutating requests.
-- **Theming** — system-aware dark/light mode toggle in both navbars (`next-themes`).
-- **Static content pages** — About, Terms of Service, and Privacy Policy pages linked from the public footer.
+- **Authentication** — Email/password registration with verification email, Google OAuth 2.0 login, JWT access/refresh token rotation via `httpOnly` cookies, password reset, profile update (username and avatar).
+- **Courses** — Catalogue with search and category filter, full CRUD for instructors, submit-for-review → Admin approve/reject workflow, unpublish (self) and force-unpublish (Admin).
+- **Sections and Lessons** — CRUD with drag-and-drop reordering. Video and PDF content uploaded through the API as `multipart/form-data` (up to 500MB) and stored on Cloudinary server-side.
+- **Enrolment and Progress** — Free enrolment, per-lesson completion tracking, course-completion detection, and unenrolment with cascade-delete of progress, certificate, and message history.
+- **Certificates** — PDF certificate auto-issued on course completion using PdfSharpCore.
+- **Real-Time Messaging** — SignalR-based messaging scoped per enrolment with live presence status (Online / Busy / Offline).
+- **AI Course Tutor** — Gemini-backed chatbot on course detail and lesson player pages. Stateless — conversation history is resent each request, nothing persisted server-side.
+- **Instructor Application Workflow** — Student applies → Admin approves or rejects → role promoted automatically on approval.
+- **Admin Panel** — User management, course review queue, published-course moderation, instructor application review, platform statistics.
+- **CSRF Protection** — CORS locked to a single configured frontend origin plus a custom-header guard middleware on all cookie-authenticated mutating requests.
+- **Theming** — System-aware dark/light mode toggle using `next-themes`.
 
-**Explicitly out of scope:** payment processing (all courses are free) and Assignments/Grading (cut from scope during development to keep the project focused).
+**Out of scope:** Payment processing (all courses are free) and Assignments/Grading.
 
 ---
 
 ## Project Structure
 
 ```
-backend/
-├── LearnHub/                      # ASP.NET Core Web API
-│   ├── Controllers/                # HTTP endpoints, delegate to Services
-│   ├── Models/
-│   │   ├── Entities/                # EF Core entities
-│   │   └── DTOs/                    # Request/response shapes, grouped by feature
-│   ├── Services/                   # Business logic, one service per domain
-│   ├── Data/                       # AppDbContext + EF Core Migrations
-│   ├── Middleware/                 # CSRF guard middleware
-│   ├── Helpers/                    # JWT helper, claims extensions, PDF generator
-│   ├── Hubs/                       # SignalR MessagingHub
-│   ├── Assets/                     # Certificate PDF template
-│   └── Program.cs                  # DI registration, middleware pipeline
-└── LearnHub.Tests/                 # xUnit test project
-
-frontend/
-├── src/
-│   ├── app/                        # Next.js App Router routes, split into route groups by chrome/auth level
-│   │   ├── (public)/                # No auth required — landing, course catalogue, course detail
-│   │   ├── (auth)/                  # Login/register/forgot-password/reset-password/verify-email — no navbar
-│   │   ├── (app)/                   # Authenticated shell (AppNavbar + session auto-refresh) — dashboard,
-│   │   │                            #   my-courses, account, messages, become-instructor, instructor/*, admin/*
-│   │   ├── (learn)/                 # The lesson player — its own minimal chrome, not the full app navbar
-│   │   ├── @modal/                  # Parallel route: login/register render as a shadcn Dialog when linked to
-│   │   │                            #   from anywhere in the app, and as full pages on direct visit/refresh
-│   │   │                            #   (Next.js "intercepting routes")
-│   │   └── proxy.ts                 # Auth guard for protected routes — checks the session, silently
-│   │                                #   refreshes an expired-but-still-valid one before redirecting to /login
-│   ├── components/
-│   │   ├── ui/                     # shadcn/ui primitives
-│   │   ├── theme-provider.tsx       # next-themes wrapper (wraps the root layout)
-│   │   ├── theme-toggle.tsx         # Dark/light mode toggle button, used in both navbars
-│   │   ├── layout/                 # PublicNavbar, AppNavbar, UserMenu, Footer
-│   │   ├── landing/                # Landing page sections
-│   │   ├── auth/                   # Auth forms, Google sign-in, session-expiry refresher
-│   │   ├── courses/                # Catalogue search/pagination, curriculum display
-│   │   ├── learn/                  # Lesson player, curriculum rail
-│   │   ├── dashboard/               # Stat tiles, continue-learning/certificate cards
-│   │   ├── messaging/               # Conversation list, chat thread (SignalR-backed)
-│   │   ├── instructor/              # Course builder (details + curriculum editor), lesson upload dialog
-│   │   ├── admin/                   # Review-queue rows, user management row
-│   │   ├── chatbot/                  # Floating AI course-tutor widget (course detail + lesson player)
-│   │   └── shared/                  # Cross-feature pieces (e.g. the Cloudinary ImageUpload widget)
-│   ├── lib/
-│   │   ├── api/                    # Typed fetch wrappers per backend feature area (server- vs client-only
-│   │   │                           #   split deliberately maintained — see note below)
-│   │   ├── signalr/                 # SignalR connection hook for messaging
-│   │   └── cloudinary.ts            # Direct-to-Cloudinary upload helper (unsigned preset)
-│   └── types/                      # TypeScript types mirroring backend DTOs
-└── ...
-
-.github/workflows/backend-ci.yml    # CI: restore, build, test on every push/PR to main
+learnhub/
+├── backend/
+│   ├── LearnHub/                   # ASP.NET Core Web API
+│   │   ├── Controllers/            # HTTP endpoints — delegate to Services
+│   │   ├── Models/
+│   │   │   ├── Entities/           # EF Core entity classes
+│   │   │   └── DTOs/               # Request/response shapes grouped by feature
+│   │   ├── Services/               # Business logic — one service per domain
+│   │   ├── Data/                   # AppDbContext + EF Core Migrations
+│   │   ├── Middleware/             # CSRF guard middleware
+│   │   ├── Helpers/                # JWT helper, claims extensions, PDF generator
+│   │   ├── Hubs/                   # SignalR MessagingHub
+│   │   ├── Assets/                 # Certificate PDF template
+│   │   └── Program.cs              # DI registration + middleware pipeline
+│   └── LearnHub.Tests/             # xUnit test project (287 tests)
+│
+├── frontend/
+│   └── src/
+│       ├── app/                    # Next.js App Router routes
+│       │   ├── (public)/           # Landing, catalogue, course detail
+│       │   ├── (auth)/             # Login, register, forgot/reset password
+│       │   ├── (app)/              # Authenticated shell — dashboard, courses, messaging
+│       │   └── (learn)/            # Lesson player with minimal chrome
+│       ├── components/             # UI components grouped by feature
+│       ├── lib/
+│       │   ├── api/                # Typed fetch wrappers per backend feature
+│       │   ├── signalr/            # SignalR connection hook
+│       │   └── cloudinary.ts       # Direct-to-Cloudinary upload helper
+│       └── types/                  # TypeScript types mirroring backend DTOs
+│
+└── .github/workflows/
+    ├── backend-ci.yml              # Build + test backend on push to main
+    └── frontend-ci.yml             # Lint + test + build frontend on push to main
 ```
-
-**Frontend status:** feature-complete across all four tiers — Public (landing, catalogue, course detail with a distinct preview experience for Admin/course-owner), Student (dashboard, my courses, lesson player with progress tracking, certificates, account settings, messaging, instructor application), Instructor (dashboard, course builder with curriculum + file upload, roster), and Admin (overview stats, course review queue, published-courses management, instructor application review, user management).
-
-**`lib/api/` server/client split**, worth knowing before adding to it: functions using `serverApiFetch` (forwards cookies via `next/headers`, Server-Component-only) and functions using `apiFetch` (plain `fetch`, client-safe) are kept in **separate files** even when they cover the same feature area (e.g. `messaging.ts` vs a client-side messages helper, `my-enrollments.ts` vs `enrollments.ts`). Mixing them in one file risks a hard Next.js build error if that file is ever imported from a `"use client"` component.
 
 ---
 
@@ -131,154 +124,221 @@ frontend/
 
 ### Prerequisites
 
-- .NET 8 SDK
-- A [Neon](https://neon.tech) Postgres database (connection string)
-- A Cloudinary account (Cloud Name / API Key / Secret)
-- A Google OAuth Client ID (for Google sign-in)
-- SMTP credentials (e.g. a Gmail account with an App Password) for verification/reset emails
-- A Google Gemini API key (for the AI course tutor)
+Before running the project, make sure you have the following installed and configured:
 
-### 1. Configure environment
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Node.js 18+](https://nodejs.org/) and npm
+- A [Neon](https://neon.tech) PostgreSQL database (free tier works)
+- A [Cloudinary](https://cloudinary.com) account (free tier works)
+- A [Google Cloud](https://console.cloud.google.com) OAuth 2.0 Client ID
+- SMTP credentials (e.g. Gmail with an App Password)
+- A [Google Gemini API](https://aistudio.google.com/app/apikey) key (free tier works)
+
+---
+
+### Backend Setup
+
+**Step 1 — Copy the environment file:**
 
 ```bash
 cp backend/LearnHub/.env.example backend/LearnHub/.env
 ```
 
-Fill in the real values — see [Environment Variables](#environment-variables) below.
+**Step 2 — Fill in your environment values** (see [Environment Variables](#environment-variables) below).
 
-### 2. Run
+**Step 3 — Restore packages and apply database migrations:**
 
 ```bash
 cd backend/LearnHub
 dotnet restore
-dotnet ef database update    # applies EF Core migrations to your Neon database
+dotnet ef database update
+```
+
+> This applies all EF Core migrations to your Neon PostgreSQL database.
+
+**Step 4 — Run the API:**
+
+```bash
 dotnet run
 ```
 
-Swagger UI is available at `/swagger` in Development.
+The API runs at `http://localhost:5073` by default. Swagger UI is available at `http://localhost:5073/swagger` in Development mode.
 
-### 3. Dev-only admin account
+> **Admin seed account:** On first run in Development, if no Admin user exists, one is seeded automatically:
+> ```
+> Email:    admin@learnhub.local
+> Password: Admin123!
+> ```
+> The credentials are also printed to the console log. Override with `Admin__Email` and `Admin__Password` in `.env`.
 
-On first run in Development, if no `Admin` user exists yet, one is seeded automatically:
+---
 
-```
-Email:    admin@learnhub.local
-Password: Admin123!
-```
+### Frontend Setup
 
-(the credentials are also printed to the console log). Override with `Admin__Email`/`Admin__Password` in `.env` if you want different ones. This seeding never runs outside `Development`.
-
-### Testing with Swagger/Postman
-
-Auth uses `httpOnly` cookies, not a bearer token in the response body — logging in via Swagger or Postman automatically stores the cookie for that tool, and subsequent requests reuse it with no extra setup. Because of the CSRF guard, any mutating request (`POST`/`PUT`/`PATCH`/`DELETE`) sent while that cookie is present must also include the header:
-
-```
-X-Requested-With: LearnHub
-```
-
-(Postman: set this once as a collection-level default header. Swagger: add it per-request via the header field.)
-
-### 4. Run the frontend
+**Step 1 — Copy the environment file:**
 
 ```bash
 cp frontend/.env.example frontend/.env.local
+```
+
+**Step 2 — Fill in your environment values** (see [Environment Variables](#environment-variables) below).
+
+**Step 3 — Install dependencies and run:**
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Runs at `http://localhost:3000`. Needs the backend running too (`NEXT_PUBLIC_API_URL`, default `http://localhost:5073`). `NEXT_PUBLIC_GOOGLE_CLIENT_ID` should be the same value as the backend's `GOOGLE__CLIENTID` — that OAuth client's authorized JavaScript origins need `http://localhost:3000` added in Google Cloud Console for Google sign-in to work locally.
+The frontend runs at `http://localhost:3000`.
 
-Avatar and course-thumbnail uploads (`/account`, the course builder) go straight from the browser to Cloudinary using an **unsigned upload preset** — the API secret never touches the frontend. Set `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (same as the backend's `CLOUDINARY__CLOUDNAME`) and `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` to a preset you've created for your Cloudinary account (Console → Settings → Upload → Upload presets → Add upload preset, mode **Unsigned**). Without this, those two upload buttons will fail — everything else in the app works fine regardless.
+> **Important:** The backend must be running before the frontend for API calls to work.
 
-### 5. Dev-only demo course data
+> **Google OAuth local setup:** Add `http://localhost:3000` to the **Authorized JavaScript origins** in your Google Cloud Console OAuth 2.0 credentials. Without this, Google sign-in will be blocked.
 
-Alongside the admin seed, if no courses exist yet, two published demo courses (with real playable sample video/PDF lessons) are seeded automatically, along with a demo Instructor and Student account so the whole enrol → learn → certificate loop can be tried immediately without registering or building a course by hand:
+> **Cloudinary unsigned upload preset:** Avatar and thumbnail uploads go directly from the browser to Cloudinary using an unsigned upload preset. Create one in your Cloudinary Console under Settings → Upload → Upload presets → Add preset → set mode to **Unsigned**. Set `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` to its name. Without this, avatar and thumbnail uploads will fail — everything else works fine.
+
+---
+
+### Demo Accounts
+
+On first run in Development, two published demo courses with real video and PDF lessons are seeded automatically, along with demo accounts so you can try the full enrol → learn → certificate flow immediately:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@learnhub.local | Admin123! |
+| Instructor | daniel@learnhub.local | Instructor123! |
+| Student | priya@learnhub.local | Student123! |
+
+---
+
+### Testing with Swagger or Postman
+
+Auth uses `httpOnly` cookies — logging in via Swagger or Postman automatically stores the cookie for subsequent requests. Because of the CSRF guard, **every mutating request** (`POST`, `PUT`, `PATCH`, `DELETE`) sent while a cookie is present must also include this header:
 
 ```
-Instructor: daniel@learnhub.local / Instructor123!
-Student:    priya@learnhub.local  / Student123!
+X-Requested-With: LearnHub
 ```
 
-Same `Development`-only, seed-if-empty pattern as the admin account (`Program.cs`).
+- **Postman:** Set this once as a collection-level default header.
+- **Swagger:** Add it per-request via the header field.
 
 ---
 
 ## Environment Variables
 
-Loaded via [`DotNetEnv`](https://www.nuget.org/packages/DotNetEnv) (`DotNetEnv.Env.Load()` in `Program.cs`). Key casing doesn't matter and `__` maps to `:` in ASP.NET Core's config binder.
+### Backend (`backend/LearnHub/.env`)
 
 ```env
-CONNECTIONSTRINGS__DEFAULTCONNECTION=Host=your-neon-host.neon.tech;Port=5432;Database=learnhub;Username=your_username;Password=your_password;SSL Mode=Require;Trust Server Certificate=true
+# Database
+CONNECTIONSTRINGS__DEFAULTCONNECTION=Host=<neon-host>;Port=5432;Database=<db>;Username=<user>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true
 
+# JWT
+JWT__SECRET=your_jwt_secret_key_min_32_chars
+JWT__ISSUER=learnhub-api
+JWT__AUDIENCE=learnhub-client
+JWT__EXPIRYMINUTES=15
+
+# Google OAuth
+GOOGLE__CLIENTID=your_google_oauth_client_id
+
+# Gemini AI
+GEMINI__APIKEY=your_gemini_api_key
+
+# Cloudinary
 CLOUDINARY__CLOUDNAME=your_cloud_name
 CLOUDINARY__APIKEY=your_api_key
 CLOUDINARY__APISECRET=your_api_secret
 
-JWT__SECRET=generate_a_random_32+_char_secret
-JWT__ISSUER=learnhub-api
-JWT__AUDIENCE=learnhub-client
-JWT__EXPIRYMINUTES=60
-
-GOOGLE__CLIENTID=your_google_oauth_client_id
-
-GEMINI__APIKEY=your_gemini_api_key
-
+# SMTP (e.g. Gmail with App Password)
 SMTP__HOST=smtp.gmail.com
 SMTP__PORT=587
-SMTP__USERNAME=your_gmail_address@gmail.com
+SMTP__USERNAME=your_gmail@gmail.com
 SMTP__PASSWORD=your_gmail_app_password
-SMTP__FROMEMAIL=your_gmail_address@gmail.com
+SMTP__FROMEMAIL=your_gmail@gmail.com
 SMTP__FROMNAME=LearnHub
 
+# Frontend origin (CORS allowed origin)
 FRONTEND__BASEURL=http://localhost:3000
+
+# Admin seed (optional override)
+ADMIN__EMAIL=admin@learnhub.local
+ADMIN__PASSWORD=Admin123!
 ```
 
-**Neon connection string format:** Npgsql needs the classic `Key=Value;` ADO.NET format, not Neon's default `postgresql://user:pass@host/db?sslmode=require&channel_binding=require` URI — Npgsql doesn't parse that URI scheme or recognize `channel_binding`. Convert it to:
-```
-Host=<neon-host>;Port=5432;Database=<db>;Username=<user>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true
+> **Neon connection string format:** Neon's dashboard gives you a URI like `postgresql://user:pass@host/db?sslmode=require`. Npgsql does not parse this format — convert it to the `Key=Value` ADO.NET format shown above.
+
+### Frontend (`frontend/.env.local`)
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5073
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
 ```
 
-**`FRONTEND__BASEURL`** is also the CORS-allowed origin — set it to wherever the frontend actually runs (`http://localhost:3000` for local dev; the real deployed frontend URL in production).
+---
+
+## Running Tests
+
+### Backend (287 xUnit tests)
+
+```bash
+# From the repository root
+dotnet test LearnHub.sln
+
+# Or from the test project directory
+cd backend/LearnHub.Tests
+dotnet test
+```
+
+### Frontend (26 Vitest tests)
+
+```bash
+cd frontend
+npm test           # single run
+npm run test:watch  # watch mode
+```
 
 ---
 
 ## API Overview
 
-All routes are prefixed `/api`. "Auth" reflects the effective requirement per endpoint (action-level `[Authorize]` overrides the controller's class-level default where noted).
+All routes are prefixed `/api`.
 
 ### Auth (`/api/auth`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| POST | `register` | None | Register (Student or Instructor only) |
-| POST | `login` | None | Log in, sets auth cookies |
-| POST | `google` | None | Google OAuth login/registration |
-| POST | `verify-email` | None | Verify email via token |
-| POST | `forgot-password` | None | Request a password reset email |
-| POST | `reset-password` | None | Reset password via token |
-| POST | `refresh` | None (refresh cookie) | Rotate access/refresh tokens |
-| POST | `logout` | None (refresh cookie) | Revoke refresh token, clear cookies |
-| GET | `me` | Authenticated | Current user's profile |
-| PUT | `me` | Authenticated | Update username/avatar photo |
-| POST | `change-password` | Authenticated | Change password (while logged in) |
+| POST | `register` | Public | Register (Student or Instructor only) |
+| POST | `login` | Public | Log in — sets `httpOnly` auth cookies |
+| POST | `google` | Public | Google OAuth login or registration |
+| POST | `verify-email` | Public | Verify email via token |
+| POST | `forgot-password` | Public | Request a password reset email |
+| POST | `reset-password` | Public | Reset password via token |
+| POST | `refresh` | Refresh cookie | Rotate access and refresh tokens |
+| POST | `logout` | Refresh cookie | Revoke refresh token and clear cookies |
+| GET | `me` | Authenticated | Current user profile |
+| PUT | `me` | Authenticated | Update username or avatar |
+| POST | `change-password` | Authenticated | Change password while logged in |
 
 ### Courses (`/api/courses`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| GET | `` | Public | Catalogue (search/category/pagination) |
+| GET | `` | Public | Catalogue with search, category, and pagination |
 | GET | `pending` | Admin | Courses awaiting approval |
-| GET | `{id}` | Public (richer detail if enrolled/owner/admin) | Course detail — includes `isEnrolled`/`isOwner` so the client can tell an enrolled Student, the owning Instructor, and an Admin apart |
+| GET | `{id}` | Public | Course detail — includes `isEnrolled` and `isOwner` |
 | POST | `` | Instructor | Create course |
 | PUT | `{id}` | Instructor | Update course |
-| DELETE | `{id}` | Instructor | Delete course |
+| DELETE | `{id}` | Instructor | Delete course (must be unpublished first) |
 | POST | `{id}/submit-for-review` | Instructor | Submit for Admin review |
 | PUT | `{id}/unpublish` | Instructor | Unpublish own course |
-| PUT | `{id}/force-unpublish` | Admin | Force-unpublish any course |
+| PUT | `{id}/force-unpublish` | Admin | Force-unpublish any published course |
 | POST | `{id}/approve` | Admin | Approve a pending course |
 | POST | `{id}/reject` | Admin | Reject a pending course |
-| POST | `{id}/chat` | Authenticated (any role; owner/Admin also allowed on unpublished courses) | Ask the AI course tutor |
+| POST | `{id}/chat` | Authenticated | Ask the AI course tutor |
 
-### Sections (`/api/sections`) — Instructor-only
+### Sections (`/api/sections`) — Instructor only
 | Method | Route | Description |
 |---|---|---|
 | POST | `` | Create section |
@@ -289,17 +349,17 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 ### Lessons (`/api/lessons`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| POST | `` | Instructor | Create lesson (multipart upload, ≤500MB) |
+| POST | `` | Instructor | Create lesson (multipart upload, up to 500MB) |
 | PUT | `reorder` | Instructor | Reorder lessons |
 | PUT | `{id}` | Instructor | Update lesson (multipart upload) |
 | DELETE | `{id}` | Instructor | Delete lesson |
-| PUT | `{id}/progress` | Student, Instructor | Mark/update a student's lesson progress |
+| PUT | `{id}/progress` | Student, Instructor | Update lesson progress |
 
 ### Enrollments (`/api/enrollments`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
 | POST | `` | Student, Instructor | Enrol in a course |
-| DELETE | `{id}` | Owner, owning instructor, Admin | Remove an enrollment |
+| DELETE | `{id}` | Owner, Instructor, Admin | Remove an enrolment |
 | GET | `` | Student, Instructor | Current user's enrolments |
 | GET | `{id}/progress` | Student, Instructor | Progress for one enrolment |
 | GET | `course/{courseId}` | Instructor, Admin | Enrolment roster for a course |
@@ -307,7 +367,7 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 ### Certificates (`/api/certificates`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| GET | `{enrollmentId}` | Owner or Admin | Certificate metadata (`certificateUrl` pointing at the Cloudinary-hosted PDF, generated once at completion time) |
+| GET | `{enrollmentId}` | Owner or Admin | Certificate metadata with Cloudinary PDF URL |
 
 ### Messaging (`/api/messaging`)
 | Method | Route | Description |
@@ -315,105 +375,58 @@ All routes are prefixed `/api`. "Auth" reflects the effective requirement per en
 | GET | `conversations` | Current user's conversations |
 | GET | `conversations/{conversationId}/messages` | Paginated message history |
 
-Sending messages and read receipts happen over the SignalR hub, not REST — connect to **`/hubs/messaging`**.
+> **Note:** Sending messages and read receipts happen over the SignalR hub at `/hubs/messaging`, not via REST.
 
 ### Instructor Applications (`/api/instructor-applications`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
 | POST | `` | Student | Submit an application |
-| GET | `mine` | Student | View own application |
+| GET | `mine` | Student | View own application status |
 | GET | `` | Admin | List all applications (filterable by status) |
-| POST | `{id}/approve` | Admin | Approve → promotes user to Instructor |
-| POST | `{id}/reject` | Admin | Reject |
+| POST | `{id}/approve` | Admin | Approve — promotes user to Instructor |
+| POST | `{id}/reject` | Admin | Reject application |
 
-### Admin (`/api/admin`) — Admin-only
+### Admin (`/api/admin`) — Admin only
 | Method | Route | Description |
 |---|---|---|
-| GET | `users` | List/search users |
+| GET | `users` | List and search users |
 | PUT | `users/{id}/role` | Change a user's role |
 | POST | `users/{id}/suspend` | Suspend a user |
-| POST | `users/{id}/reinstate` | Reinstate a user |
+| POST | `users/{id}/reinstate` | Reinstate a suspended user |
 | GET | `stats` | Platform-wide statistics |
 
 ### Dashboard (`/api/dashboard`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| GET | `student` | Authenticated (any role) | Student's enrolments, applications, certificates |
-| GET | `instructor` | Instructor | Instructor's own courses summary |
-
----
-
-## Testing & CI/CD
-
-### Why unit testing was added
-
-Before this work, the only way to check that login, registration, or logout behaved correctly was to run the whole application and test it by hand — slow, and easy to forget to re-check old features after a new change. Unit tests solve this: small automated checks that run in seconds and verify a specific piece of code still behaves as expected, every time the project is built.
-
-### What's tested
-
-Testing started with the authentication feature (`AuthController`/`AuthService`) since every other feature depends on a user being correctly identified, then expanded to cover every feature as it was built — courses, lessons, enrolment, progress, certificates, messaging, instructor applications, the admin panel, dashboards, the AI chatbot, and the CSRF guard middleware.
-
-Two layers are tested separately per feature:
-- **Services** — the business logic (e.g. "logging in with the wrong password is rejected", "an expired verification link is rejected").
-- **Controllers** — the HTTP layer on top (correct status codes, correctly shaped responses, cookies set with the right security options).
-
-Tooling:
-- **xUnit** — runs the tests and reports pass/fail.
-- **Moq** — fakes dependencies that shouldn't really run during a test (e.g. a fake email sender, a fake Gemini client, so tests never hit a real API).
-- **FluentAssertions** — makes assertions easier to read.
-- **EF Core's InMemory provider** — a fake database, so tests run instantly with no external dependency.
-
-As of the latest count, 284 tests cover expected successful behavior and expected failure behavior alike (wrong password, duplicate email, expired tokens, unauthorized access, and so on).
-
-### A real bug found during testing
-
-While writing a test for the logout endpoint, the tests revealed an actual bug, not just a hypothetical one. On login, the server stores a "refresh token" cookie scoped to the path `/api/auth`. On logout, the code meant to delete that cookie was accidentally targeting a different path, `/api/auth/refresh`. Browsers only delete a cookie when the path matches exactly, so logging out did not actually remove the cookie from the browser.
-
-This was confirmed independently by simulating a real browser's cookie storage (via .NET's `CookieContainer`, which follows the same cookie rules browsers use) and checking whether the cookie survived logout — it did, proving the bug. The fix was a one-line change to make both paths match. A good example of unit testing catching a real, user-facing issue that wasn't obvious from reading the code casually.
-
-### Frontend tests
-
-`frontend/` has its own test setup — **Vitest** + **React Testing Library**, `jsdom` environment. Tests are colocated next to the file they cover (e.g. `src/lib/utils.test.ts` next to `src/lib/utils.ts`) and use explicit `import { describe, it, expect } from "vitest"` rather than Vitest's implicit globals, so no ESLint config changes were needed.
-
-Started narrow, the same way the backend suite did — one pure-logic module (`apiFetch`/`ApiError` in `lib/api/client.ts`, the shared fetch wrapper nearly every feature goes through), the small utility helpers (`cn`/`initials`/`formatDuration`), and two representative components (`CurriculumSection` for prop-driven UI with zero external dependencies, `EnrolButton` for conditional rendering plus an async success/error interaction with mocked `next/navigation` and a mocked API call) — rather than an attempt at full coverage in one pass.
-
-```bash
-cd frontend
-npm test          # one-shot run
-npm run test:watch
-```
-
-### CI/CD with GitHub Actions
-
-Two independent workflows, each scoped to only run when the part of the repo it covers actually changes (via `paths:` filters), so a frontend-only change doesn't wait on a .NET build and vice versa:
-
-- **`.github/workflows/backend-ci.yml`** — on push/PR to `main` touching `backend/**` or `LearnHub.sln`: installs the .NET SDK, builds the solution, runs the full test suite (284 tests).
-- **`.github/workflows/frontend-ci.yml`** — on push/PR to `main` touching `frontend/**`: installs Node + npm dependencies (`npm ci`, exactly reproducing the lockfile — no floating versions), then runs `npm run lint`, `npm test` (26 tests), and `npm run build` in sequence. The production build step needs no environment variables or a live backend to succeed — every route that fetches data is server-rendered on demand (`ƒ` in the build output) rather than statically generated at build time, so there's nothing for the build to fetch yet.
-
-If any step in either workflow fails, GitHub marks the change with a red cross and shows exactly what failed, before the code is ever merged.
-
-### Running tests locally
-
-```bash
-dotnet test LearnHub.sln
-```
+| GET | `student` | Authenticated | Enrolments, applications, certificates |
+| GET | `instructor` | Instructor | Own courses summary |
 
 ---
 
 ## Deployment
 
-Target architecture: backend on **Render** (Docker web service, needed for SignalR WebSocket support), frontend on **Vercel** (native Next.js host), database reusing the existing dev **Neon** Postgres instance.
+Target architecture: backend on **Render** (Docker web service), frontend on **Vercel**, database on **Neon**.
 
 The backend is container-ready:
-- `backend/LearnHub/Dockerfile` — multi-stage .NET 8 build (SDK image to publish, ASP.NET runtime image to run), listens on port `8080` via `ASPNETCORE_HTTP_PORTS`.
-- `Program.cs` runs `UseForwardedHeaders` before `UseHttpsRedirection`, so it correctly trusts Render's `X-Forwarded-Proto` header instead of looping on HTTPS redirects behind Render's TLS-terminating proxy.
-- `Program.cs` calls `Database.MigrateAsync()` on startup, so the container self-applies EF Core migrations — no manual `dotnet ef database update` step needed post-deploy.
-- `GET /health` (real DB-connectivity check against Neon via `AspNetCore.HealthChecks.NpgSql`) is implemented and manually verified — ready for Render's health check and an UptimeRobot monitor.
 
-Not yet done (manual dashboard steps, not code): creating the Render web service and Vercel project, setting environment variables on each, pointing `FRONTEND__BASEURL` at the real Vercel URL, adding that URL to the Google OAuth Client's authorized JavaScript origins, and setting up an UptimeRobot monitor against `/health`.
+- `backend/LearnHub/Dockerfile` — multi-stage .NET 8 build. Listens on port `8080` via `ASPNETCORE_HTTP_PORTS`.
+- `Program.cs` calls `UseForwardedHeaders` before `UseHttpsRedirection` to correctly trust Render's `X-Forwarded-Proto` header.
+- `Program.cs` calls `Database.MigrateAsync()` on startup — no manual migration step needed after deploy.
+- `GET /health` — real DB connectivity check via `AspNetCore.HealthChecks.NpgSql`, ready for Render's health check.
+
+**To deploy:**
+
+1. Create a Render web service pointing to your repository — select Docker as the environment and set `ASPNETCORE_HTTP_PORTS=8080`.
+2. Add all backend environment variables in the Render dashboard.
+3. Create a Vercel project pointing to the `frontend/` directory.
+4. Add all frontend environment variables in the Vercel dashboard.
+5. Set `FRONTEND__BASEURL` on Render to your Vercel deployment URL.
+6. Add your Vercel URL to the Google OAuth Client's **Authorized JavaScript origins** in Google Cloud Console.
+
+> **Known limitation:** The `httpOnly` cookie authentication approach requires the frontend and backend to share a domain or be routed through a reverse proxy. When hosted on separate Render and Vercel domains, some browsers' enhanced tracking protection may block cross-site cookies. The system works correctly in local Docker Compose where both services share `localhost`.
 
 ---
 
 ## License
 
-Academic project — Westminster University Final Project 2025/2026.
+Academic project — University of Westminster Final Project 2025/26.
