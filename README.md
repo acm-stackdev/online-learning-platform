@@ -42,7 +42,7 @@ LearnHub is a full-stack, cloud-native Learning Management System providing role
 | **Logging** | Serilog (console sink) |
 | **Backend Testing** | xUnit + FluentAssertions + Moq + EF Core InMemory |
 | **CI/CD** | GitHub Actions (path-filtered workflows) |
-| **Frontend** | Next.js 14 (App Router) + TypeScript |
+| **Frontend** | Next.js 16 (App Router) + TypeScript |
 | **Frontend Styling** | Tailwind CSS + shadcn/ui |
 | **Frontend Forms** | react-hook-form + zod |
 | **Frontend Real-Time** | `@microsoft/signalr` |
