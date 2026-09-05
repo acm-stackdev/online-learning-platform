@@ -79,11 +79,12 @@ namespace LearnHub.Services
                 throw new ApiException("Course not found.", 404);
 
             var isOwner = requestingUserId.HasValue && course.InstructorId == requestingUserId.Value;
-            if (course.Status != CourseStatus.Published && !isOwner && !isAdmin)
-                throw new ApiException("Course not found.", 404);
-
             var isEnrolled = requestingUserId.HasValue &&
                 await _db.Enrollments.AnyAsync(e => e.StudentId == requestingUserId.Value && e.CourseId == id);
+
+            if (course.Status != CourseStatus.Published && !isOwner && !isAdmin && !isEnrolled)
+                throw new ApiException("Course not found.", 404);
+
             var canSeeContent = isOwner || isAdmin || isEnrolled;
 
             return new CourseDetailDto
