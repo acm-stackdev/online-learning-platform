@@ -13,9 +13,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createLesson, updateLesson } from "@/lib/api/course-builder";
 import { ApiError } from "@/lib/api/client";
 import { ContentType, type Lesson } from "@/types/course";
+
+const contentTypeLabels: Record<ContentType, string> = {
+  [ContentType.Video]: "Video",
+  [ContentType.Pdf]: "Document (PDF)",
+};
 
 export function LessonFormDialog({
   sectionId,
@@ -101,15 +113,19 @@ export function LessonFormDialog({
           {!isEdit ? (
             <div className="space-y-1.5">
               <Label htmlFor="lesson-type">Content type</Label>
-              <select
-                id="lesson-type"
-                value={contentType}
-                onChange={(e) => setContentType(Number(e.target.value) as ContentType)}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              <Select
+                items={contentTypeLabels}
+                value={String(contentType)}
+                onValueChange={(value) => value && setContentType(Number(value) as ContentType)}
               >
-                <option value={ContentType.Video}>Video</option>
-                <option value={ContentType.Pdf}>Document (PDF)</option>
-              </select>
+                <SelectTrigger id="lesson-type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(ContentType.Video)}>Video</SelectItem>
+                  <SelectItem value={String(ContentType.Pdf)}>Document (PDF)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           ) : null}
 

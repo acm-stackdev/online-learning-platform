@@ -17,12 +17,16 @@ import { Role } from "@/types/auth";
 const baseNavLinks = [{ href: "/courses", label: "Courses" }];
 
 const teachLink = { href: "/become-instructor", label: "Teach" };
+const instructorDashboardLink = { href: "/instructor/dashboard", label: "Teach" };
 
 export async function PublicNavbar() {
   const user = await getCurrentUser();
   const isAdmin = user?.role === Role.Admin;
+  const isInstructor = user?.role === Role.Instructor;
 
-  const navLinks = isAdmin ? baseNavLinks : [...baseNavLinks, teachLink];
+  const navLinks = isAdmin
+    ? baseNavLinks
+    : [...baseNavLinks, isInstructor ? instructorDashboardLink : teachLink];
 
   return (
     <header className="border-b border-border bg-background">
