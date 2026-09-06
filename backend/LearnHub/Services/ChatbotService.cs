@@ -44,8 +44,8 @@ namespace LearnHub.Services
                           "Be welcoming and help them understand what they'd learn and how the course is taught.";
 
             var syllabus = string.Join("\n", course.Sections
-                .OrderBy(s => s.Order)
-                .SelectMany(s => s.Lessons.OrderBy(l => l.Order).Select(l => $"- {s.Title}: {l.Title}")));
+                .OrderBy(s => s.Order).ThenBy(s => s.Id)
+                .SelectMany(s => s.Lessons.OrderBy(l => l.Order).ThenBy(l => l.Id).Select(l => $"- {s.Title}: {l.Title}")));
 
             var systemInstruction =
                 $"You are a helpful tutor for the course \"{course.Title}\".\n" +

@@ -48,6 +48,7 @@ export function CurriculumEditor({
     { type: "section"; id: number } | { type: "lesson"; id: number } | null
   >(null);
   const [deleting, setDeleting] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   function reportError(err: unknown) {
     setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -67,16 +68,20 @@ export function CurriculumEditor({
   }
 
   async function handleMoveSection(index: number, direction: -1 | 1) {
+    if (reordering) return;
     const target = index + direction;
     if (target < 0 || target >= sections.length) return;
     const ids = sections.map((s) => s.id);
     [ids[index], ids[target]] = [ids[target], ids[index]];
     setError(null);
+    setReordering(true);
     try {
       await reorderSections(courseId, ids);
       router.refresh();
     } catch (err) {
       reportError(err);
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -100,16 +105,20 @@ export function CurriculumEditor({
   }
 
   async function handleMoveLesson(section: Section, index: number, direction: -1 | 1) {
+    if (reordering) return;
     const target = index + direction;
     if (target < 0 || target >= section.lessons.length) return;
     const ids = section.lessons.map((l) => l.id);
     [ids[index], ids[target]] = [ids[target], ids[index]];
     setError(null);
+    setReordering(true);
     try {
       await reorderLessons(section.id, ids);
       router.refresh();
     } catch (err) {
       reportError(err);
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -128,7 +137,7 @@ export function CurriculumEditor({
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => handleMoveSection(sIndex, -1)}
-                disabled={sIndex === 0}
+                disabled={sIndex === 0 || reordering}
               >
                 <ChevronUp className="size-4" />
               </Button>
@@ -136,7 +145,7 @@ export function CurriculumEditor({
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => handleMoveSection(sIndex, 1)}
-                disabled={sIndex === sections.length - 1}
+                disabled={sIndex === sections.length - 1 || reordering}
               >
                 <ChevronDown className="size-4" />
               </Button>
@@ -168,7 +177,7 @@ export function CurriculumEditor({
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => handleMoveLesson(section, lIndex, -1)}
-                    disabled={lIndex === 0}
+                    disabled={lIndex === 0 || reordering}
                   >
                     <ChevronUp className="size-3.5" />
                   </Button>
@@ -176,7 +185,7 @@ export function CurriculumEditor({
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => handleMoveLesson(section, lIndex, 1)}
-                    disabled={lIndex === section.lessons.length - 1}
+                    disabled={lIndex === section.lessons.length - 1 || reordering}
                   >
                     <ChevronDown className="size-3.5" />
                   </Button>

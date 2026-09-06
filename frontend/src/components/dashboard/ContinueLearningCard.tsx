@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
@@ -21,7 +22,16 @@ export function ContinueLearningCard({
 
   return (
     <Card className="flex-row items-center gap-4 p-4">
-      <div className="aspect-video w-24 shrink-0 rounded-md bg-muted" />
+      <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-md bg-muted">
+        {enrollment.course.thumbnailUrl ? (
+          <Image
+            src={enrollment.course.thumbnailUrl}
+            alt={enrollment.course.title}
+            fill
+            className="object-cover"
+          />
+        ) : null}
+      </div>
 
       <div className="min-w-0 flex-1 space-y-1.5">
         <p className="truncate text-sm font-medium">{enrollment.course.title}</p>

@@ -102,6 +102,7 @@ namespace LearnHub.Services
                 IsOwner = isOwner,
                 Sections = course.Sections
                     .OrderBy(s => s.Order)
+                    .ThenBy(s => s.Id)
                     .Select(s => new SectionSummaryDto
                     {
                         Id = s.Id,
@@ -109,6 +110,7 @@ namespace LearnHub.Services
                         Order = s.Order,
                         Lessons = s.Lessons
                             .OrderBy(l => l.Order)
+                            .ThenBy(l => l.Id)
                             .Select(l => new LessonSummaryDto
                             {
                                 Id = l.Id,

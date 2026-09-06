@@ -38,7 +38,7 @@ namespace LearnHub.Controllers
             try
             {
                 await _sectionService.ReorderAsync(dto, User.GetUserId());
-                return Ok();
+                return NoContent();
             }
             catch (ApiException ex)
             {
